@@ -22,7 +22,7 @@
 
 class Arduino_Alvik{
   private:
-
+    SemaphoreHandle_t update_semaphore;
     TaskHandle_t update_task;
 
 
@@ -78,6 +78,7 @@ class Arduino_Alvik{
     HardwareSerial * uart;
 
     Arduino_Alvik(){
+      update_semaphore = xSemaphoreCreateMutex();
       uart = new HardwareSerial(UART);
       packeter = new ucPack(200);
       version_semaphore = xSemaphoreCreateMutex();
@@ -142,8 +143,8 @@ class Arduino_Alvik{
         return -1;
       }
 
-      //begin_update_thread()
-      xTaskCreatePinnedToCore(this->parser, "update", 10000, this, 1, &update_task, 0);
+      //begin_update_thread();
+      xTaskCreatePinnedToCore(this->update_thread, "update", 10000, this, 1, &update_task, 0);
 
       delay(100);
       reset_hw();
@@ -153,10 +154,32 @@ class Arduino_Alvik{
         delay(20);
       }
 
+      delay(2000);
+
       set_illuminator(true);
 
       return 0;
     }
+
+    /*
+    void begin_update_thread(){
+      if (xSemaphoreTake(update_semaphore, 5)){
+        xTaskCreatePinnedToCore(this->update_thread, "update", 10000, this, 1, &update_task, 0);
+      }
+    }
+
+    void stop_update_thread(){
+      //update_task = NULL;
+      xSemaphoreGive(update_semaphore);
+    }
+
+    void stop(){
+      // stop wheels;
+      stop_update_thread();
+    }
+    */
+
+
 
     // return first available packet
     bool read_message(){  //must be private
@@ -179,7 +202,6 @@ class Arduino_Alvik{
         case 'x':
             packeter->unpacketC1B(code, last_ack);
             break;
-
 
         // get line follower sensors, low is white - high is black: Left, Center, Right
         case 'l':
@@ -220,7 +242,7 @@ class Arduino_Alvik{
             while (!xSemaphoreTake(touch_semaphore, 5)){}
             packeter->unpacketC1B(code, touch);
             xSemaphoreGive(touch_semaphore);
-            break;     
+            break;   
         
         
         // get version: Up, Mid, Low
@@ -398,7 +420,7 @@ class Arduino_Alvik{
     }
 
     void update(const int delay_value = 1){  //must be private
-      while (1){
+      while (update_task != NULL){
         if (read_message()){
           parse_message();
         }
@@ -406,7 +428,7 @@ class Arduino_Alvik{
       }
     }
 
-    static void parser(void * pvParameters){  // must be private
+    static void update_thread(void * pvParameters){  // must be private
       ((Arduino_Alvik*) pvParameters)->update();
     }
 
