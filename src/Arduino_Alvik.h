@@ -60,9 +60,17 @@ class Arduino_Alvik{
     SemaphoreHandle_t touch_semaphore;
     uint8_t touch, touch_bits;
 
-
+    SemaphoreHandle_t joint_vel_semaphore;
     float joints_velocity[2];
+    
+    SemaphoreHandle_t joint_pos_semaphore;
     float joints_position[2];
+
+    SemaphoreHandle_t robot_vel_semaphore;
+    float robot_velocity[2];
+
+    SemaphoreHandle_t robot_pos_semaphore;
+    float robot_pose[3];
 
 
 
@@ -88,6 +96,10 @@ class Arduino_Alvik{
       imu_semaphore = xSemaphoreCreateMutex();
       distance_semaphore = xSemaphoreCreateMutex();
       touch_semaphore = xSemaphoreCreateMutex();
+      joint_vel_semaphore = xSemaphoreCreateMutex();
+      joint_pos_semaphore = xSemaphoreCreateMutex();
+      robot_vel_semaphore = xSemaphoreCreateMutex();
+      robot_pos_semaphore = xSemaphoreCreateMutex();
     }
 
     int begin(){
@@ -129,6 +141,19 @@ class Arduino_Alvik{
       touch = 0;
       touch_bits = 0;
 
+      joints_velocity[0] = 0.0;
+      joints_velocity[1] = 0.0;
+
+      joints_position[0] = 0.0;
+      joints_position[1] = 0.0;
+
+      robot_velocity[0] = 0.0;
+      robot_velocity[1] = 0.0;
+
+      robot_pose[0] = 0.0;
+      robot_pose[1] = 0.0;
+      robot_pose[2] = 0.0;
+
 
 
 
@@ -150,6 +175,7 @@ class Arduino_Alvik{
       reset_hw();
       delay(1000);
 
+
       while (last_ack!=0x00){
         delay(20);
       }
@@ -157,6 +183,7 @@ class Arduino_Alvik{
       delay(2000);
 
       set_illuminator(true);
+
 
       return 0;
     }
@@ -197,6 +224,39 @@ class Arduino_Alvik{
     int parse_message(){   // must be private
       code = packeter->payloadTop();
       switch(code){
+        // get joints velocity in RPM
+        case 'j':
+          while (!xSemaphoreTake(joint_vel_semaphore, 5)){}
+          packeter->unpacketC2F(code, joints_velocity[0], joints_velocity[1]);
+          xSemaphoreGive(joint_vel_semaphore);
+          break;
+
+        // get joints position in degrees
+        case 'w':
+          while (!xSemaphoreTake(joint_pos_semaphore, 5)){}
+          packeter->unpacketC2F(code, joints_position[0], joints_position[1]);
+          xSemaphoreGive(joint_pos_semaphore);
+          break;
+
+        // get robot linear and angular velocities in mm/s and degrees/s
+        case 'v':
+          while (!xSemaphoreTake(robot_vel_semaphore, 5)){}
+          packeter->unpacketC2F(code, robot_velocity[0], robot_velocity[1]);
+          xSemaphoreGive(robot_vel_semaphore);
+          break;
+
+        // get robot pose in mm and degrees, x, y, theta
+        case 'z':
+          while (!xSemaphoreTake(robot_pos_semaphore, 5)){}
+          packeter->unpacketC3F(code, robot_pose[0], robot_pose[1], robot_pose[2]);
+          xSemaphoreGive(robot_pos_semaphore);
+          break;
+
+        
+
+
+
+
 
         // get ack code
         case 'x':
@@ -379,6 +439,51 @@ class Arduino_Alvik{
     }
 
 
+    void get_wheels_speed(float & left, float & right){
+      while (!xSemaphoreTake(joint_vel_semaphore, 5)){}
+      left = joints_velocity[0];
+      right = joints_velocity[1];
+      xSemaphoreGive(joint_vel_semaphore);
+    }
+    
+    void set_wheels_speed(const float left, const float right){
+      msg_size = packeter->packetC2F('J', left, right);
+      uart->write(packeter->msg, msg_size);
+    }
+
+    void get_wheels_position(float & left, float & right){
+      while (!xSemaphoreTake(joint_pos_semaphore, 5)){}
+      left = joints_position[0];
+      right = joints_position[1];
+      xSemaphoreGive(joint_pos_semaphore);
+    }
+
+    void set_wheels_position(const float left, const float right){
+      msg_size = packeter->packetC2F('A', left, right);
+      uart->write(packeter->msg, msg_size);
+    }
+
+    void get_drive_speed(float & linear, float & angular){
+      while (!xSemaphoreTake(robot_vel_semaphore, 5)){}
+      linear = robot_velocity[0];
+      angular = robot_velocity[1];
+      xSemaphoreGive(robot_vel_semaphore);
+    }
+
+    void drive(const float linear, const float angular){
+      msg_size = packeter->packetC2F('V', linear, angular);
+      uart->write(packeter->msg, msg_size);
+    }
+
+    void get_pose(float & x, float & y, float & theta){
+      while (!xSemaphoreTake(robot_pos_semaphore, 5)){}
+      x = robot_pose[0];
+      y = robot_pose[1];
+      theta = robot_pose[2];
+      xSemaphoreGive(robot_pos_semaphore);
+    }
+    
+
 
 
 
@@ -405,12 +510,22 @@ class Arduino_Alvik{
     }
 
     void set_builtin_led(bool value){
-      led_state = (led_state | 1) & value;
+      if (value){
+        led_state |= 1<<0;
+      }
+      else{
+        led_state &= ~1<<0;
+      }
       set_leds();
     }
 
     void set_illuminator(bool value){
-      led_state = (led_state | 1<<1) & value<<1;
+      if (value){
+        led_state |= 1<<1;
+      }
+      else{
+        led_state &= ~1<<1;
+      }
       set_leds();
     }
 
