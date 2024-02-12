@@ -27,8 +27,8 @@ Arduino_Alvik::Arduino_Alvik(){
   robot_vel_semaphore = xSemaphoreCreateMutex();
   robot_pos_semaphore = xSemaphoreCreateMutex();
 
-  left_led = ArduinoAlvikRgbLed(uart, packeter, &led_state, 2);
-  right_led = ArduinoAlvikRgbLed(uart, packeter, &led_state, 5);
+  left_led = ArduinoAlvikRgbLed(uart, packeter, "left_led", &led_state, 2);
+  right_led = ArduinoAlvikRgbLed(uart, packeter,"right_led", &led_state, 5);
 
 }
 
@@ -447,7 +447,7 @@ void Arduino_Alvik::set_leds(){   // must be private
   uart->write(packeter->msg, msg_size);
 }
 
-void Arduino_Alvik::set_builtin_led(bool value){
+void Arduino_Alvik::set_builtin_led(const bool value){
   if (value){
     led_state |= 1<<0;
   }
@@ -457,7 +457,7 @@ void Arduino_Alvik::set_builtin_led(bool value){
   set_leds();
 }
 
-void Arduino_Alvik::set_illuminator(bool value){
+void Arduino_Alvik::set_illuminator(const bool value){
   if (value){
     led_state |= 1<<1;
   }

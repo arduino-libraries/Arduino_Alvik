@@ -98,10 +98,13 @@ class Arduino_Alvik{
         uint8_t _msg_size;
 
       public:
+        String label;
+
         ArduinoAlvikRgbLed(){};
-        ArduinoAlvikRgbLed(HardwareSerial * serial, ucPack * packeter, uint8_t * led_state, uint8_t offset){
+        ArduinoAlvikRgbLed(HardwareSerial * serial, ucPack * packeter, String label, uint8_t * led_state, uint8_t offset){
           _serial = serial;
           _packeter = packeter;
+          this->label = label;
           _led_state = led_state;
           _offset = offset;
         }
@@ -109,6 +112,7 @@ class Arduino_Alvik{
         void operator=(const ArduinoAlvikRgbLed& other){ 
           _serial = other._serial;
           _packeter = other._packeter;
+          label = other.label;
           _led_state = other._led_state;
           _offset = other._offset;
           _msg_size = other._msg_size;
@@ -215,8 +219,8 @@ class Arduino_Alvik{
 
 
 
-    void set_builtin_led(bool value);
-    void set_illuminator(bool value);
+    void set_builtin_led(const bool value);
+    void set_illuminator(const bool value);
 
     void set_servo_positions(const uint8_t a_position, const uint8_t b_position);
 };
