@@ -119,46 +119,19 @@ class Arduino_Alvik{
         float * _joint_position;
       public:
         ArduinoAlvikWheel(){};
-        ArduinoAlvikWheel(HardwareSerial * serial, ucPack * packeter, uint8_t label, float * joint_velocity, float * joint_position, float wheel_diameter){
-          _serial = serial;
-          _packeter = packeter;
-          _label = label;
-          _wheel_diameter = wheel_diameter;
-          _joint_velocity = joint_velocity;
-          _joint_position = joint_position;
-        }
+        ArduinoAlvikWheel(HardwareSerial * serial, ucPack * packeter, uint8_t label, 
+                          float * joint_velocity, float * joint_position, float wheel_diameter=ROBOT_WHEEL_DIAMETER_MM);
 
-        void reset(const float initial_position = 0.0){
-          _msg_size = _packeter->packetC2B1F('W', _label, 'Z', initial_position);
-          _serial->write(_packeter->msg, _msg_size);
-        }
+        void reset(const float initial_position = 0.0);
 
-        void set_pid_gains(const float kp, const float ki, const float kd){
-          _msg_size = _packeter->packetC1B3F('P', _label, kp, ki, kd);
-          _serial->write(_packeter->msg, _msg_size);
-        }
+        void set_pid_gains(const float kp, const float ki, const float kd);
 
-        void stop(){
-          set_speed(0);
-        }
+        void stop();
+        void set_speed(const float velocity);
+        float get_speed();
 
-        void set_speed(const float velocity){
-          _msg_size = _packeter->packetC2B1F('W', _label, 'V', velocity);
-          _serial->write(_packeter->msg, _msg_size);
-        }
-
-        float get_speed(){
-          return * _joint_velocity;
-        }
-
-        void set_position(const float position){
-          _msg_size = _packeter->packetC2B1F('W', _label, 'P', position);
-          _serial->write(_packeter->msg, _msg_size);
-        }
-
-        float get_position(){
-          return * _joint_position;
-        }
+        void set_position(const float position);
+        float get_position();
     };
 
 

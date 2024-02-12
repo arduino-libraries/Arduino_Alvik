@@ -32,8 +32,8 @@ Arduino_Alvik::Arduino_Alvik(){
   left_led = ArduinoAlvikRgbLed(uart, packeter, "left_led", &led_state, 2);
   right_led = ArduinoAlvikRgbLed(uart, packeter,"right_led", &led_state, 5);
 
-  left_wheel = ArduinoAlvikWheel(uart, packeter, 'L', &joints_velocity[0], &joints_position[0], ROBOT_WHEEL_DIAMETER_MM);
-  right_wheel = ArduinoAlvikWheel(uart, packeter, 'R', &joints_velocity[1], &joints_position[1], ROBOT_WHEEL_DIAMETER_MM);
+  left_wheel = ArduinoAlvikWheel(uart, packeter, 'L', &joints_velocity[0], &joints_position[0]);
+  right_wheel = ArduinoAlvikWheel(uart, packeter, 'R', &joints_velocity[1], &joints_position[1]);
 }
 
 void Arduino_Alvik::reset_hw(){
@@ -536,4 +536,50 @@ void Arduino_Alvik::ArduinoAlvikRgbLed::set_color(const bool red, const bool gre
 
   _msg_size = _packeter->packetC1B('L', *_led_state);
   _serial->write(_packeter->msg, _msg_size);
+}
+
+
+//-----------------------------------------------------------------------------------------------//
+//                                         wheel class                                           //
+//-----------------------------------------------------------------------------------------------//
+
+Arduino_Alvik::ArduinoAlvikWheel::ArduinoAlvikWheel(HardwareSerial * serial, ucPack * packeter, uint8_t label, float * joint_velocity, float * joint_position, float wheel_diameter){
+  _serial = serial;
+  _packeter = packeter;
+  _label = label;
+  _wheel_diameter = wheel_diameter;
+  _joint_velocity = joint_velocity;
+  _joint_position = joint_position;
+}
+
+void Arduino_Alvik::ArduinoAlvikWheel::reset(const float initial_position){
+  _msg_size = _packeter->packetC2B1F('W', _label, 'Z', initial_position);
+  _serial->write(_packeter->msg, _msg_size);
+}
+
+void Arduino_Alvik::ArduinoAlvikWheel::set_pid_gains(const float kp, const float ki, const float kd){
+  _msg_size = _packeter->packetC1B3F('P', _label, kp, ki, kd);
+  _serial->write(_packeter->msg, _msg_size);
+}
+
+void Arduino_Alvik::ArduinoAlvikWheel::stop(){
+  set_speed(0);
+}
+
+void Arduino_Alvik::ArduinoAlvikWheel::set_speed(const float velocity){
+  _msg_size = _packeter->packetC2B1F('W', _label, 'V', velocity);
+  _serial->write(_packeter->msg, _msg_size);
+}
+
+float Arduino_Alvik::ArduinoAlvikWheel::get_speed(){
+  return * _joint_velocity;
+}
+
+void Arduino_Alvik::ArduinoAlvikWheel::set_position(const float position){
+  _msg_size = _packeter->packetC2B1F('W', _label, 'P', position);
+  _serial->write(_packeter->msg, _msg_size);
+}
+
+float Arduino_Alvik::ArduinoAlvikWheel::get_position(){
+  return * _joint_position;
 }
