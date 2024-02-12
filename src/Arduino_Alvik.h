@@ -21,6 +21,8 @@
 #define UART 0
 #define UART_BAUD_RATE 115200
 
+#define ROBOT_WHEEL_DIAMETER_MM 34
+
 class Arduino_Alvik{
   private:
     SemaphoreHandle_t update_semaphore;
@@ -97,7 +99,6 @@ class Arduino_Alvik{
         uint8_t * _led_state;
         uint8_t _offset;
         uint8_t _msg_size;
-
       public:
         String label;
 
@@ -105,6 +106,59 @@ class Arduino_Alvik{
         ArduinoAlvikRgbLed(HardwareSerial * serial, ucPack * packeter, String label, uint8_t * led_state, uint8_t offset);
         void operator=(const ArduinoAlvikRgbLed& other);
         void set_color(const bool red, const bool green, const bool blue);
+    };
+
+    class ArduinoAlvikWheel{
+      private:
+        HardwareSerial * _serial;
+        ucPack * _packeter;
+        uint8_t _msg_size;
+        float _wheel_diameter;
+        uint8_t _label;
+        float * _joint_velocity;
+        float * _joint_position;
+      public:
+        ArduinoAlvikWheel(){};
+        ArduinoAlvikWheel(HardwareSerial * serial, ucPack * packeter, uint8_t label, float * joint_velocity, float * joint_position, float wheel_diameter){
+          _serial = serial;
+          _packeter = packeter;
+          _label = label;
+          _wheel_diameter = wheel_diameter;
+          _joint_velocity = joint_velocity;
+          _joint_position = joint_position;
+        }
+
+        void reset(const float initial_position = 0.0){
+          _msg_size = _packeter->packetC2B1F('W', _label, 'Z', initial_position);
+          _serial->write(_packeter->msg, _msg_size);
+        }
+
+        void set_pid_gains(const float kp, const float ki, const float kd){
+          _msg_size = _packeter->packetC1B3F('P', _label, kp, ki, kd);
+          _serial->write(_packeter->msg, _msg_size);
+        }
+
+        void stop(){
+          set_speed(0);
+        }
+
+        void set_speed(const float velocity){
+          _msg_size = _packeter->packetC2B1F('W', _label, 'V', velocity);
+          _serial->write(_packeter->msg, _msg_size);
+        }
+
+        float get_speed(){
+          return * _joint_velocity;
+        }
+
+        void set_position(const float position){
+          _msg_size = _packeter->packetC2B1F('W', _label, 'P', position);
+          _serial->write(_packeter->msg, _msg_size);
+        }
+
+        float get_position(){
+          return * _joint_position;
+        }
     };
 
 
@@ -115,6 +169,8 @@ class Arduino_Alvik{
   public:
     Arduino_Alvik::ArduinoAlvikRgbLed left_led;
     Arduino_Alvik::ArduinoAlvikRgbLed right_led;
+    Arduino_Alvik::ArduinoAlvikWheel left_wheel;
+    Arduino_Alvik::ArduinoAlvikWheel right_wheel;
 
     Arduino_Alvik();
 

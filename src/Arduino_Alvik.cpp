@@ -32,6 +32,8 @@ Arduino_Alvik::Arduino_Alvik(){
   left_led = ArduinoAlvikRgbLed(uart, packeter, "left_led", &led_state, 2);
   right_led = ArduinoAlvikRgbLed(uart, packeter,"right_led", &led_state, 5);
 
+  left_wheel = ArduinoAlvikWheel(uart, packeter, 'L', &joints_velocity[0], &joints_position[0], ROBOT_WHEEL_DIAMETER_MM);
+  right_wheel = ArduinoAlvikWheel(uart, packeter, 'R', &joints_velocity[1], &joints_position[1], ROBOT_WHEEL_DIAMETER_MM);
 }
 
 void Arduino_Alvik::reset_hw(){
