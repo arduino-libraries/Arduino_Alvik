@@ -16,6 +16,7 @@
 #include "ucPack.h"
 
 #define CHECK_STM32 A6
+#define BOOT_STM32 D2
 #define RESET_STM32 D3
 #define UART 0
 #define UART_BAUD_RATE 115200
@@ -88,10 +89,66 @@ class Arduino_Alvik{
     static void update_thread(void * pvParameters);
 
 
+    class ArduinoAlvikRgbLed{
+      private:
+        HardwareSerial * _serial;
+        ucPack * _packeter;
+        uint8_t * _led_state;
+        uint8_t _offset;
+        uint8_t _msg_size;
+
+      public:
+        ArduinoAlvikRgbLed(){};
+        ArduinoAlvikRgbLed(HardwareSerial * serial, ucPack * packeter, uint8_t * led_state, uint8_t offset){
+          _serial = serial;
+          _packeter = packeter;
+          _led_state = led_state;
+          _offset = offset;
+        }
+
+        void operator=(const ArduinoAlvikRgbLed& other){ 
+          _serial = other._serial;
+          _packeter = other._packeter;
+          _led_state = other._led_state;
+          _offset = other._offset;
+          _msg_size = other._msg_size;
+
+        }
+
+        void set_color(const bool red, const bool green, const bool blue){
+          if (red){
+            (*_led_state) = (*_led_state) | (1<<_offset);
+          }
+          else{
+            (*_led_state) = (*_led_state) & (~(1<<_offset));
+          }
+
+          if (green){
+            (*_led_state) = (*_led_state) | (1<<(_offset+1));
+          }
+          else{
+            (*_led_state) =  (*_led_state) & ~(1<<(_offset+1));
+          }
+          
+          if (blue){
+            (*_led_state) = (*_led_state) | (1<<(_offset+2));
+          }
+          else{
+            (*_led_state) = (*_led_state) & ~(1<<(_offset+2));
+          }
+
+          _msg_size = _packeter->packetC1B('L', *_led_state);
+          _serial->write(_packeter->msg, _msg_size);
+        }
+    };
+
+
 
 
   public:
     HardwareSerial * uart;
+    Arduino_Alvik::ArduinoAlvikRgbLed left_led;
+    Arduino_Alvik::ArduinoAlvikRgbLed right_led;
 
     Arduino_Alvik();
 
@@ -140,6 +197,7 @@ class Arduino_Alvik{
     bool get_touch_down();
     bool get_touch_right();
 
+
     uint8_t get_ack();
 
 
@@ -158,7 +216,6 @@ class Arduino_Alvik{
 
 
     void set_builtin_led(bool value);
-
     void set_illuminator(bool value);
 
     void set_servo_positions(const uint8_t a_position, const uint8_t b_position);

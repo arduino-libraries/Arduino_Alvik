@@ -26,6 +26,10 @@ Arduino_Alvik::Arduino_Alvik(){
   joint_pos_semaphore = xSemaphoreCreateMutex();
   robot_vel_semaphore = xSemaphoreCreateMutex();
   robot_pos_semaphore = xSemaphoreCreateMutex();
+
+  left_led = ArduinoAlvikRgbLed(uart, packeter, &led_state, 2);
+  right_led = ArduinoAlvikRgbLed(uart, packeter, &led_state, 5);
+
 }
 
 void Arduino_Alvik::reset_hw(){
