@@ -11,6 +11,8 @@
 
 #include "Arduino_Alvik.h"
 
+
+
 Arduino_Alvik::Arduino_Alvik(){
   update_semaphore = xSemaphoreCreateMutex();
   uart = new HardwareSerial(UART);
@@ -485,3 +487,51 @@ void Arduino_Alvik::update_thread(void * pvParameters){
   ((Arduino_Alvik*) pvParameters)->update();
 }
 
+
+//-----------------------------------------------------------------------------------------------//
+//                                       RGB led class                                           //
+//-----------------------------------------------------------------------------------------------//
+
+Arduino_Alvik::ArduinoAlvikRgbLed::ArduinoAlvikRgbLed(HardwareSerial * serial, ucPack * packeter, String label, uint8_t * led_state, uint8_t offset){
+  _serial = serial;
+  _packeter = packeter;
+  this->label = label;
+  _led_state = led_state;
+  _offset = offset;
+}
+
+void Arduino_Alvik::ArduinoAlvikRgbLed::operator=(const ArduinoAlvikRgbLed& other){ 
+  _serial = other._serial;
+  _packeter = other._packeter;
+  label = other.label;
+  _led_state = other._led_state;
+  _offset = other._offset;
+  _msg_size = other._msg_size;
+
+}
+
+void Arduino_Alvik::ArduinoAlvikRgbLed::set_color(const bool red, const bool green, const bool blue){
+  if (red){
+    (*_led_state) = (*_led_state) | (1<<_offset);
+  }
+  else{
+    (*_led_state) = (*_led_state) & (~(1<<_offset));
+  }
+
+  if (green){
+    (*_led_state) = (*_led_state) | (1<<(_offset+1));
+  }
+  else{
+    (*_led_state) =  (*_led_state) & ~(1<<(_offset+1));
+  }
+  
+  if (blue){
+    (*_led_state) = (*_led_state) | (1<<(_offset+2));
+  }
+  else{
+    (*_led_state) = (*_led_state) & ~(1<<(_offset+2));
+  }
+
+  _msg_size = _packeter->packetC1B('L', *_led_state);
+  _serial->write(_packeter->msg, _msg_size);
+}
