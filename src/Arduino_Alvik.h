@@ -15,6 +15,7 @@
 
 #include "Arduino.h"
 #include "ucPack.h"
+#include "definitions.h"
 
 
 class Arduino_Alvik{
@@ -83,6 +84,14 @@ class Arduino_Alvik{
     void wait_for_target();                                             // service function that wait for ack
 
 
+    float convert_distance(const float value, const uint8_t from_unit, const uint8_t to_unit);
+    float convert_speed(const float value, const uint8_t from_unit, const uint8_t to_unit);
+    float convert_angle(const float value, const uint8_t from_unit, const uint8_t to_unit);
+    float convert_rotational_speed(const float value, const uint8_t from_unit, const uint8_t to_unit);
+
+
+
+
     class ArduinoAlvikRgbLed{                                           // service class for RGB led
       private:
         HardwareSerial * _serial;
@@ -112,18 +121,18 @@ class Arduino_Alvik{
       public:
         ArduinoAlvikWheel(){};
         ArduinoAlvikWheel(HardwareSerial * serial, ucPack * packeter, uint8_t label, 
-                          float * joint_velocity, float * joint_position, float wheel_diameter=ROBOT_WHEEL_DIAMETER_MM);
+                          float * joint_velocity, float * joint_position, float wheel_diameter = ROBOT_WHEEL_DIAMETER_MM);
 
-        void reset(const float initial_position = 0.0);
+        void reset(const float initial_position = 0.0, const uint8_t unit = DEG);
 
         void set_pid_gains(const float kp, const float ki, const float kd);
 
         void stop();
-        void set_speed(const float velocity);
-        float get_speed();
+        void set_speed(const float velocity, const uint8_t unit = RPM);
+        float get_speed(const uint8_t unit = RPM);
 
-        void set_position(const float position);
-        float get_position();
+        void set_position(const float position, const uint8_t unit = DEG);
+        float get_position(const uint8_t unit = DEG);
     };
 
 
@@ -142,11 +151,11 @@ class Arduino_Alvik{
     uint8_t get_ack();
 
 
-    void get_wheels_speed(float & left, float & right);
-    void set_wheels_speed(const float left, const float right);
+    void get_wheels_speed(float & left, float & righ, const uint8_t unit = RPM);
+    void set_wheels_speed(const float left, const float right, const uint8_t unit = RPM);
 
-    void get_wheels_position(float & left, float & right);
-    void set_wheels_position(const float left, const float right);
+    void get_wheels_position(float & left, float & right, const uint8_t unit = DEG);
+    void set_wheels_position(const float left, const float right, const uint8_t unit = DEG);
 
     void get_drive_speed(float & linear, float & angular);
     void drive(const float linear, const float angular);
@@ -154,7 +163,7 @@ class Arduino_Alvik{
     void get_pose(float & x, float & y, float & theta);
     bool is_target_reached();
     void rotate(const float angle, const bool blocking = true);
-    void move(const float distance, const bool blocking = true);
+    void move(const float distance, const bool blocking = true, const uint8_t unit = CM);
     
 
     void get_line_sensors(int16_t & left, int16_t & center, int16_t & right);
@@ -166,7 +175,7 @@ class Arduino_Alvik{
     void get_gyros(float & x, float & y, float & z);
     void get_imu(float & ax, float & ay, float & az, float & gx, float & gy, float & gz);
 
-    void get_distance(int16_t & left, int16_t & center_left, int16_t & center, int16_t & center_right, int16_t & right);
+    void get_distance(float & left, float & center_left, float & center, float & center_right, float & right, const uint8_t unit = CM);
 
     bool get_touch_any();
     bool get_touch_ok();

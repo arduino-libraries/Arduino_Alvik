@@ -21,7 +21,44 @@
 #define UART 0
 #define UART_BAUD_RATE 115200
 
-#define ROBOT_WHEEL_DIAMETER_MM 34
+#define ROBOT_WHEEL_DIAMETER_MM 34.0
+#define MOTOR_MAX_RPM 70.0
+
+
+// unit conversion constants
+
+#define CM 0
+#define MM 1
+#define M 2
+#define IN 3
+#define INCH 3
+const float DISTANCE_UNITS[4] = {1.0, 0.1, 100, 2.54};
+
+
+#define CM_S 0
+#define MM_S 1
+#define M_S 2
+#define IN_S 3
+#define INCH_S 3
+const float SPEED_UNITS[4] = {1.0, 0.1, 100, 2.54};
+
+
+#define DEG 0
+#define RAD 1
+#define REV 2
+#define REVOLUTIONS 2
+#define PERC 3
+#define PERCENTAGE 3
+const float ANGLE_UNITS[4] = {1.0, 57.2957795131, 360.0, 3.6};
+
+#define RPM 0
+#define DEG_S 1
+#define RAD_S 2
+#define REV_S 3
+#define REVOLUTIONS_S 3
+#define PERC 4
+#define PERCENTAGE 4
+const float ROTATIONAL_SPEED_UNITS[5] = {1.0, 1.6, 9.54929658551, 60.0, MOTOR_MAX_RPM/100.0};
 
 
 #endif

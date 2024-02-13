@@ -266,30 +266,71 @@ uint8_t Arduino_Alvik::get_ack(){
 
 
 //-----------------------------------------------------------------------------------------------//
+//                                          update                                               //
+//-----------------------------------------------------------------------------------------------//
+
+float Arduino_Alvik::convert_distance(const float value, const uint8_t from_unit, const uint8_t to_unit){           //it is private
+  if ((to_unit<4)&&(from_unit<4)){
+    return value*DISTANCE_UNITS[from_unit]/DISTANCE_UNITS[to_unit];
+  }
+  else{
+    return value;
+  }
+}
+
+float Arduino_Alvik::convert_speed(const float value, const uint8_t from_unit, const uint8_t to_unit){               //it is private
+  if ((to_unit<4)&&(from_unit<4)){
+    return value*SPEED_UNITS[from_unit]/SPEED_UNITS[to_unit];
+  }
+  else{
+    return value;
+  }
+}
+
+float Arduino_Alvik::convert_angle(const float value, const uint8_t from_unit, const uint8_t to_unit){               //it is private
+  if ((to_unit<4)&&(from_unit<4)){
+    return value*ANGLE_UNITS[from_unit]/ANGLE_UNITS[to_unit];
+  }
+  else{
+    return value;
+  }
+}
+
+float Arduino_Alvik::convert_rotational_speed(const float value, const uint8_t from_unit, const uint8_t to_unit){    //it is private
+  if ((to_unit<5)&&(from_unit<5)){
+    return value*ROTATIONAL_SPEED_UNITS[from_unit]/ROTATIONAL_SPEED_UNITS[to_unit];
+  }
+  else{
+    return value;
+  }
+}
+
+
+//-----------------------------------------------------------------------------------------------//
 //                                          motion                                               //
 //-----------------------------------------------------------------------------------------------//
 
-void Arduino_Alvik::get_wheels_speed(float & left, float & right){
+void Arduino_Alvik::get_wheels_speed(float & left, float & right, const uint8_t unit){
   while (!xSemaphoreTake(joint_vel_semaphore, 5)){}
-  left = joints_velocity[0];
-  right = joints_velocity[1];
+  left = convert_rotational_speed(joints_velocity[0], RPM, unit);
+  right = convert_rotational_speed(joints_velocity[1], RPM, unit);
   xSemaphoreGive(joint_vel_semaphore);
 }
 
-void Arduino_Alvik::set_wheels_speed(const float left, const float right){
-  msg_size = packeter->packetC2F('J', left, right);
+void Arduino_Alvik::set_wheels_speed(const float left, const float right, const uint8_t unit){
+  msg_size = packeter->packetC2F('J', convert_rotational_speed(left, unit, RPM), convert_rotational_speed(right, unit, RPM));
   uart->write(packeter->msg, msg_size);
 }
 
-void Arduino_Alvik::get_wheels_position(float & left, float & right){
+void Arduino_Alvik::get_wheels_position(float & left, float & right, const uint8_t unit){
   while (!xSemaphoreTake(joint_pos_semaphore, 5)){}
-  left = joints_position[0];
-  right = joints_position[1];
+  left = convert_angle(joints_position[0], DEG, unit);
+  right = convert_angle(joints_position[1], DEG, unit);
   xSemaphoreGive(joint_pos_semaphore);
 }
 
-void Arduino_Alvik::set_wheels_position(const float left, const float right){
-  msg_size = packeter->packetC2F('A', left, right);
+void Arduino_Alvik::set_wheels_position(const float left, const float right, const uint8_t unit){
+  msg_size = packeter->packetC2F('A', convert_rotational_speed(left, unit, DEG), convert_rotational_speed(right, unit, DEG));
   uart->write(packeter->msg, msg_size);
 }
 
@@ -337,9 +378,9 @@ void Arduino_Alvik::rotate(const float angle, const bool blocking){
   }
 }
 
-void Arduino_Alvik::move(const float distance, const bool blocking){
+void Arduino_Alvik::move(const float distance, const bool blocking, const uint8_t unit){
   delay(200);
-  msg_size = packeter->packetC1F('G', distance);
+  msg_size = packeter->packetC1F('G', convert_distance(distance, unit, MM));
   uart->write(packeter->msg, msg_size);
   if (blocking){
     wait_for_target();
@@ -405,13 +446,13 @@ void Arduino_Alvik::get_imu(float & ax, float & ay, float & az, float & gx, floa
 }
 
 
-void Arduino_Alvik::get_distance(int16_t & left, int16_t & center_left, int16_t & center, int16_t & center_right, int16_t & right){
+void Arduino_Alvik::get_distance(float & left, float & center_left, float & center, float & center_right, float & right, const uint8_t unit){
   while (!xSemaphoreTake(distance_semaphore, 5)){}
-  left = distances[0];
-  center_left = distances[1];
-  center = distances[2];
-  center_right = distances[3];
-  right = distances[4];
+  left = convert_distance(distances[0], MM, unit);
+  center_left = convert_distance(distances[1], MM, unit);
+  center = convert_distance(distances[2], MM, unit);
+  center_right = convert_distance(distances[3], MM, unit);
+  right = convert_distance(distances[4], MM, unit);
   xSemaphoreGive(distance_semaphore);
 }
 
@@ -571,8 +612,8 @@ Arduino_Alvik::ArduinoAlvikWheel::ArduinoAlvikWheel(HardwareSerial * serial, ucP
   _joint_position = joint_position;
 }
 
-void Arduino_Alvik::ArduinoAlvikWheel::reset(const float initial_position){
-  _msg_size = _packeter->packetC2B1F('W', _label, 'Z', initial_position);
+void Arduino_Alvik::ArduinoAlvikWheel::reset(const float initial_position, const uint8_t unit){
+  _msg_size = _packeter->packetC2B1F('W', _label, 'Z', convert_angle(initial_position, unit, DEG));
   _serial->write(_packeter->msg, _msg_size);
 }
 
@@ -585,22 +626,22 @@ void Arduino_Alvik::ArduinoAlvikWheel::stop(){
   set_speed(0);
 }
 
-void Arduino_Alvik::ArduinoAlvikWheel::set_speed(const float velocity){
-  _msg_size = _packeter->packetC2B1F('W', _label, 'V', velocity);
+void Arduino_Alvik::ArduinoAlvikWheel::set_speed(const float velocity, const uint8_t unit){
+  _msg_size = _packeter->packetC2B1F('W', _label, 'V', convert_rotational_speed(velocity, unit, RPM));
   _serial->write(_packeter->msg, _msg_size);
 }
 
-float Arduino_Alvik::ArduinoAlvikWheel::get_speed(){
-  return * _joint_velocity;
+float Arduino_Alvik::ArduinoAlvikWheel::get_speed(const uint8_t unit){
+  return convert_rotational_speed(* _joint_velocity, RPM, unit);
 }
 
-void Arduino_Alvik::ArduinoAlvikWheel::set_position(const float position){
-  _msg_size = _packeter->packetC2B1F('W', _label, 'P', position);
+void Arduino_Alvik::ArduinoAlvikWheel::set_position(const float position, const uint8_t unit){
+  _msg_size = _packeter->packetC2B1F('W', _label, 'P', convert_angle(position, unit, DEG));
   _serial->write(_packeter->msg, _msg_size);
 }
 
-float Arduino_Alvik::ArduinoAlvikWheel::get_position(){
-  return * _joint_position;
+float Arduino_Alvik::ArduinoAlvikWheel::get_position(const uint8_t unit){
+  return convert_angle(* _joint_position, DEG, unit);
 }
 
 
