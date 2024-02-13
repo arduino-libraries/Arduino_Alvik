@@ -9,8 +9,8 @@
     
 */
 
-#include "Arduino_Alvik.h"
 
+#include "Arduino_Alvik.h"
 
 
 Arduino_Alvik::Arduino_Alvik(){
@@ -36,15 +36,14 @@ Arduino_Alvik::Arduino_Alvik(){
   right_wheel = ArduinoAlvikWheel(uart, packeter, 'R', &joints_velocity[1], &joints_position[1]);
 }
 
-void Arduino_Alvik::reset_hw(){
+void Arduino_Alvik::reset_hw(){                                                   //it is private
   digitalWrite(RESET_STM32, LOW);
   delay(100);
   digitalWrite(RESET_STM32, HIGH);
   delay(100);
 }
 
-
-int Arduino_Alvik::begin(){
+int Arduino_Alvik::begin(){  
   last_ack = 0;
 
   version[0] = 0;
@@ -130,28 +129,29 @@ int Arduino_Alvik::begin(){
   return 0;
 }
 
-/*
-void begin_update_thread(){
-  if (xSemaphoreTake(update_semaphore, 5)){
-    xTaskCreatePinnedToCore(this->update_thread, "update", 10000, this, 1, &update_task, 0);
+void Arduino_Alvik::stop(){
+  set_wheels_speed(0,0);
+}
+
+
+//-----------------------------------------------------------------------------------------------//
+//                                          update                                               //
+//-----------------------------------------------------------------------------------------------//
+
+void Arduino_Alvik::update(const int delay_value){                                //it is private
+  while (update_task != NULL){
+    if (read_message()){
+      parse_message();
+    }
+    delay(delay_value);
   }
 }
 
-void stop_update_thread(){
-  //update_task = NULL;
-  xSemaphoreGive(update_semaphore);
+void Arduino_Alvik::update_thread(void * pvParameters){                           //it is private
+  ((Arduino_Alvik*) pvParameters)->update();
 }
 
-void stop(){
-  // stop wheels;
-  stop_update_thread();
-}
-*/
-
-
-
-// return first available packet
-bool Arduino_Alvik::read_message(){  //must be private
+bool Arduino_Alvik::read_message(){                                               //it is private
   while (uart->available()){
     b = uart->read();
     packeter->buffer.push(b);
@@ -162,10 +162,17 @@ bool Arduino_Alvik::read_message(){  //must be private
   return false;
 }
 
-// robot commands logic
-int Arduino_Alvik::parse_message(){   // must be private
+int Arduino_Alvik::parse_message(){                                               //it is private
   code = packeter->payloadTop();
   switch(code){
+    // get ack code
+    case 'x':
+      packeter->unpacketC1B(code, last_ack);
+      break;
+
+
+    // motion
+
     // get joints velocity in RPM
     case 'j':
       while (!xSemaphoreTake(joint_vel_semaphore, 5)){}
@@ -194,16 +201,8 @@ int Arduino_Alvik::parse_message(){   // must be private
       xSemaphoreGive(robot_pos_semaphore);
       break;
 
-    
 
-
-
-
-
-    // get ack code
-    case 'x':
-        packeter->unpacketC1B(code, last_ack);
-        break;
+    // sensors
 
     // get line follower sensors, low is white - high is black: Left, Center, Right
     case 'l':
@@ -240,12 +239,12 @@ int Arduino_Alvik::parse_message(){   // must be private
         xSemaphoreGive(distance_semaphore);
         break;    
 
+    // get data from touch pads: any, ok, delete, center, left, down, right, up
     case 't':
         while (!xSemaphoreTake(touch_semaphore, 5)){}
         packeter->unpacketC1B(code, touch);
         xSemaphoreGive(touch_semaphore);
         break;   
-    
     
     // get version: Up, Mid, Low
     case 0x7E:
@@ -261,125 +260,14 @@ int Arduino_Alvik::parse_message(){   // must be private
   return 0;
 }
 
-void Arduino_Alvik::get_version(uint8_t & upper, uint8_t & middle, uint8_t & lower){
-  while (!xSemaphoreTake(version_semaphore, 5)){}
-  upper = version[0];
-  middle = version[1];
-  lower = version[2];
-  xSemaphoreGive(version_semaphore);
-}
-
-void Arduino_Alvik::get_line_sensors(int16_t & left, int16_t & center, int16_t & right){
-  while (!xSemaphoreTake(line_semaphore, 5)){}
-  left = line_sensors[0];
-  center = line_sensors[1];
-  right = line_sensors[2];
-  xSemaphoreGive(line_semaphore);
-}
-
-void Arduino_Alvik::get_color_raw(int16_t & red, int16_t & green, int16_t & blue){
-  while (!xSemaphoreTake(color_semaphore, 5)){}
-  red = color_sensor[0];
-  green = color_sensor[1];
-  blue = color_sensor[2];
-  xSemaphoreGive(color_semaphore);
-}
-
-void Arduino_Alvik::get_orientation(float & roll, float & pitch, float & yaw){
-  while (!xSemaphoreTake(orientation_semaphore, 5)){}
-  roll = orientation[0];
-  pitch = orientation[1];
-  yaw = orientation[2];
-  xSemaphoreGive(orientation_semaphore);
-}
-
-void Arduino_Alvik::get_accelerations(float & x, float & y, float & z){
-  while (!xSemaphoreTake(imu_semaphore, 5)){}
-  x = imu[0];
-  y = imu[1];
-  z = imu[2];
-  xSemaphoreGive(imu_semaphore);
-}
-
-void Arduino_Alvik::get_gyros(float & x, float & y, float & z){
-  while (!xSemaphoreTake(imu_semaphore, 5)){}
-  x = imu[3];
-  y = imu[4];
-  z = imu[5];
-  xSemaphoreGive(imu_semaphore);
-}
-
-void Arduino_Alvik::get_imu(float & ax, float & ay, float & az, float & gx, float & gy, float & gz){
-  while (!xSemaphoreTake(imu_semaphore, 5)){}
-  ax = imu[0];
-  ay = imu[1];
-  az = imu[2];
-  gx = imu[3];
-  gy = imu[4];
-  gz = imu[5];
-  xSemaphoreGive(imu_semaphore);
-}
-
-void Arduino_Alvik::get_distance(int16_t & left, int16_t & center_left, int16_t & center, int16_t & center_right, int16_t & right){
-  while (!xSemaphoreTake(distance_semaphore, 5)){}
-  left = distances[0];
-  center_left = distances[1];
-  center = distances[2];
-  center_right = distances[3];
-  right = distances[4];
-  xSemaphoreGive(distance_semaphore);
-}
-
-void Arduino_Alvik::get_touch(){     //must be private
-  while (!xSemaphoreTake(touch_semaphore, 5)){}
-  touch_bits = touch;
-  xSemaphoreGive(touch_semaphore);
-}
-
-bool Arduino_Alvik::get_touch_any(){
-  get_touch();
-  return touch_bits & 0b00000001;
-}
-
-bool Arduino_Alvik::get_touch_ok(){
-  get_touch();
-  return touch_bits & 0b00000010;
-}
-
-bool Arduino_Alvik::get_touch_cancel(){
-  get_touch();
-  return touch_bits & 0b00000100;
-}
-
-bool Arduino_Alvik::get_touch_center(){
-  get_touch();
-  return touch_bits & 0b00001000;
-}
-
-bool Arduino_Alvik::get_touch_up(){
-  get_touch();
-  return touch_bits & 0b00010000;
-}
-
-bool Arduino_Alvik::get_touch_left(){
-  get_touch();
-  return touch_bits & 0b00100000;
-}
-
-bool Arduino_Alvik::get_touch_down(){
-  get_touch();
-  return touch_bits & 0b01000000;
-}
-
-bool Arduino_Alvik::get_touch_right(){
-  get_touch();
-  return touch_bits & 0b10000000;
-}
-
 uint8_t Arduino_Alvik::get_ack(){
   return last_ack;
 }
 
+
+//-----------------------------------------------------------------------------------------------//
+//                                          motion                                               //
+//-----------------------------------------------------------------------------------------------//
 
 void Arduino_Alvik::get_wheels_speed(float & left, float & right){
   while (!xSemaphoreTake(joint_vel_semaphore, 5)){}
@@ -425,28 +313,162 @@ void Arduino_Alvik::get_pose(float & x, float & y, float & theta){
   xSemaphoreGive(robot_pos_semaphore);
 }
 
+bool Arduino_Alvik::is_target_reached(){
+  if ((last_ack != 'M') && (last_ack != 'R')){
+    delay(50);
+    return false;
+  }
+  msg_size = packeter->packetC1B('X', 'K');
+  uart->write(packeter->msg, msg_size);
+  delay(200);
+  return true;
+}
+
+void Arduino_Alvik::wait_for_target(){                                             //it is private
+  while (!is_target_reached()){}
+}
+
+void Arduino_Alvik::rotate(const float angle, const bool blocking){
+  delay(200);
+  msg_size = packeter->packetC1F('R', angle);
+  uart->write(packeter->msg, msg_size);
+  if (blocking){
+    wait_for_target();
+  }
+}
+
+void Arduino_Alvik::move(const float distance, const bool blocking){
+  delay(200);
+  msg_size = packeter->packetC1F('G', distance);
+  uart->write(packeter->msg, msg_size);
+  if (blocking){
+    wait_for_target();
+  }
+}
+
+
+//-----------------------------------------------------------------------------------------------//
+//                                              sensors                                          //
+//-----------------------------------------------------------------------------------------------//
+
+void Arduino_Alvik::get_line_sensors(int16_t & left, int16_t & center, int16_t & right){
+  while (!xSemaphoreTake(line_semaphore, 5)){}
+  left = line_sensors[0];
+  center = line_sensors[1];
+  right = line_sensors[2];
+  xSemaphoreGive(line_semaphore);
+}
+
+
+void Arduino_Alvik::get_color_raw(int16_t & red, int16_t & green, int16_t & blue){
+  while (!xSemaphoreTake(color_semaphore, 5)){}
+  red = color_sensor[0];
+  green = color_sensor[1];
+  blue = color_sensor[2];
+  xSemaphoreGive(color_semaphore);
+}
+
+
+void Arduino_Alvik::get_orientation(float & roll, float & pitch, float & yaw){
+  while (!xSemaphoreTake(orientation_semaphore, 5)){}
+  roll = orientation[0];
+  pitch = orientation[1];
+  yaw = orientation[2];
+  xSemaphoreGive(orientation_semaphore);
+}
+
+void Arduino_Alvik::get_accelerations(float & x, float & y, float & z){
+  while (!xSemaphoreTake(imu_semaphore, 5)){}
+  x = imu[0];
+  y = imu[1];
+  z = imu[2];
+  xSemaphoreGive(imu_semaphore);
+}
+
+void Arduino_Alvik::get_gyros(float & x, float & y, float & z){
+  while (!xSemaphoreTake(imu_semaphore, 5)){}
+  x = imu[3];
+  y = imu[4];
+  z = imu[5];
+  xSemaphoreGive(imu_semaphore);
+}
+
+void Arduino_Alvik::get_imu(float & ax, float & ay, float & az, float & gx, float & gy, float & gz){
+  while (!xSemaphoreTake(imu_semaphore, 5)){}
+  ax = imu[0];
+  ay = imu[1];
+  az = imu[2];
+  gx = imu[3];
+  gy = imu[4];
+  gz = imu[5];
+  xSemaphoreGive(imu_semaphore);
+}
+
+
+void Arduino_Alvik::get_distance(int16_t & left, int16_t & center_left, int16_t & center, int16_t & center_right, int16_t & right){
+  while (!xSemaphoreTake(distance_semaphore, 5)){}
+  left = distances[0];
+  center_left = distances[1];
+  center = distances[2];
+  center_right = distances[3];
+  right = distances[4];
+  xSemaphoreGive(distance_semaphore);
+}
 
 
 
+void Arduino_Alvik::get_touch(){                                                  //it is private
+  while (!xSemaphoreTake(touch_semaphore, 5)){}
+  touch_bits = touch;
+  xSemaphoreGive(touch_semaphore);
+}
+
+bool Arduino_Alvik::get_touch_any(){
+  get_touch();
+  return touch_bits & 0b00000001;
+}
+
+bool Arduino_Alvik::get_touch_ok(){
+  get_touch();
+  return touch_bits & 0b00000010;
+}
+
+bool Arduino_Alvik::get_touch_cancel(){
+  get_touch();
+  return touch_bits & 0b00000100;
+}
+
+bool Arduino_Alvik::get_touch_center(){
+  get_touch();
+  return touch_bits & 0b00001000;
+}
+
+bool Arduino_Alvik::get_touch_up(){
+  get_touch();
+  return touch_bits & 0b00010000;
+}
+
+bool Arduino_Alvik::get_touch_left(){
+  get_touch();
+  return touch_bits & 0b00100000;
+}
+
+bool Arduino_Alvik::get_touch_down(){
+  get_touch();
+  return touch_bits & 0b01000000;
+}
+
+bool Arduino_Alvik::get_touch_right(){
+  get_touch();
+  return touch_bits & 0b10000000;
+}
 
 
+//-----------------------------------------------------------------------------------------------//
+//                                   leds and peripherials                                       //
+//-----------------------------------------------------------------------------------------------//
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-void Arduino_Alvik::set_leds(){   // must be private
+void Arduino_Alvik::set_leds(){                                                   //it is private
   msg_size = packeter->packetC1B('L', led_state);
   uart->write(packeter->msg, msg_size);
 }
@@ -476,17 +498,12 @@ void Arduino_Alvik::set_servo_positions(const uint8_t a_position, const uint8_t 
   uart->write(packeter->msg, msg_size);
 }
 
-void Arduino_Alvik::update(const int delay_value){  //must be private
-  while (update_task != NULL){
-    if (read_message()){
-      parse_message();
-    }
-    delay(delay_value);
-  }
-}
-
-void Arduino_Alvik::update_thread(void * pvParameters){
-  ((Arduino_Alvik*) pvParameters)->update();
+void Arduino_Alvik::get_version(uint8_t & upper, uint8_t & middle, uint8_t & lower){
+  while (!xSemaphoreTake(version_semaphore, 5)){}
+  upper = version[0];
+  middle = version[1];
+  lower = version[2];
+  xSemaphoreGive(version_semaphore);
 }
 
 
@@ -494,7 +511,8 @@ void Arduino_Alvik::update_thread(void * pvParameters){
 //                                       RGB led class                                           //
 //-----------------------------------------------------------------------------------------------//
 
-Arduino_Alvik::ArduinoAlvikRgbLed::ArduinoAlvikRgbLed(HardwareSerial * serial, ucPack * packeter, String label, uint8_t * led_state, uint8_t offset){
+Arduino_Alvik::ArduinoAlvikRgbLed::ArduinoAlvikRgbLed(HardwareSerial * serial, ucPack * packeter, String label, 
+                                                      uint8_t * led_state, uint8_t offset){
   _serial = serial;
   _packeter = packeter;
   this->label = label;
@@ -543,7 +561,8 @@ void Arduino_Alvik::ArduinoAlvikRgbLed::set_color(const bool red, const bool gre
 //                                         wheel class                                           //
 //-----------------------------------------------------------------------------------------------//
 
-Arduino_Alvik::ArduinoAlvikWheel::ArduinoAlvikWheel(HardwareSerial * serial, ucPack * packeter, uint8_t label, float * joint_velocity, float * joint_position, float wheel_diameter){
+Arduino_Alvik::ArduinoAlvikWheel::ArduinoAlvikWheel(HardwareSerial * serial, ucPack * packeter, uint8_t label, 
+                                                    float * joint_velocity, float * joint_position, float wheel_diameter){
   _serial = serial;
   _packeter = packeter;
   _label = label;
@@ -583,3 +602,26 @@ void Arduino_Alvik::ArduinoAlvikWheel::set_position(const float position){
 float Arduino_Alvik::ArduinoAlvikWheel::get_position(){
   return * _joint_position;
 }
+
+
+
+/*
+     _            _       _             
+    / \   _ __ __| |_   _(_)_ __   ___  
+   / _ \ | '__/ _` | | | | | '_ \ / _ \ 
+  / ___ \| | | (_| | |_| | | | | | (_) |
+ /_/   \_\_|  \__,_|\__,_|_|_| |_|\___/ 
+     _    _       _ _                   
+    / \  | |_   _(_) | __               
+   / _ \ | \ \ / / | |/ /               
+  / ___ \| |\ V /| |   <                
+ /_/   \_\_| \_/ |_|_|\_\   
+
++---+----------------------------+--+----------+
+|   |      ()             ()     |  |          |
+|   |            \__/            |  |   /---\  |
+|    \__________________________/   |   |   |  |
+|                                   |   |   |  |
++-----------------------------------+---|   |--+
+   \\\___/                            \\\___/   
+*/

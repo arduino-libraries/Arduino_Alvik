@@ -9,25 +9,18 @@
     
 */
 
+
 #ifndef __ARDUINO_ALVIK_H__
 #define __ARDUINO_ALVIK_H__
 
 #include "Arduino.h"
 #include "ucPack.h"
 
-#define CHECK_STM32 A6
-#define BOOT_STM32 D2
-#define RESET_STM32 D3
-#define UART 0
-#define UART_BAUD_RATE 115200
-
-#define ROBOT_WHEEL_DIAMETER_MM 34
 
 class Arduino_Alvik{
   private:
     SemaphoreHandle_t update_semaphore;
     TaskHandle_t update_task;
-
 
     HardwareSerial * uart;
 
@@ -78,21 +71,19 @@ class Arduino_Alvik{
 
 
 
-    void reset_hw();     // reset the robot
+    void reset_hw();                                                    // reset the robot
        
-    bool read_message(); // return first available packet
-    int parse_message(); // robot commands logic
+    bool read_message();                                                // return first available packet
+    int parse_message();                                                // robot commands logic
+    void update(const int delay_value = 1);                             // thread to update data
+    static void update_thread(void * pvParameters);                     // freertos thread
 
-    void get_touch();    // parse touch
-    void set_leds();     // set leds by a byte
-
-
-    void update(const int delay_value = 1);
-
-    static void update_thread(void * pvParameters);
+    void get_touch();                                                   // service function to parse touch
+    void set_leds();                                                    // service function to set leds by a byte
+    void wait_for_target();                                             // service function that wait for ack
 
 
-    class ArduinoAlvikRgbLed{
+    class ArduinoAlvikRgbLed{                                           // service class for RGB led
       private:
         HardwareSerial * _serial;
         ucPack * _packeter;
@@ -108,7 +99,8 @@ class Arduino_Alvik{
         void set_color(const bool red, const bool green, const bool blue);
     };
 
-    class ArduinoAlvikWheel{
+
+    class ArduinoAlvikWheel{                                            // service class for wheel
       private:
         HardwareSerial * _serial;
         ucPack * _packeter;
@@ -135,10 +127,6 @@ class Arduino_Alvik{
     };
 
 
-
-
-
-
   public:
     Arduino_Alvik::ArduinoAlvikRgbLed left_led;
     Arduino_Alvik::ArduinoAlvikRgbLed right_led;
@@ -148,49 +136,7 @@ class Arduino_Alvik{
     Arduino_Alvik();
 
     int begin();
-
-    /*
-    void begin_update_thread(){
-      if (xSemaphoreTake(update_semaphore, 5)){
-        xTaskCreatePinnedToCore(this->update_thread, "update", 10000, this, 1, &update_task, 0);
-      }
-    }
-
-    void stop_update_thread(){
-      //update_task = NULL;
-      xSemaphoreGive(update_semaphore);
-    }
-
-    void stop(){
-      // stop wheels;
-      stop_update_thread();
-    }
-    */
-
-
-    void get_version(uint8_t & upper, uint8_t & middle, uint8_t & lower);
-
-    void get_line_sensors(int16_t & left, int16_t & center, int16_t & right);
-
-    void get_color_raw(int16_t & red, int16_t & green, int16_t & blue);
-
-    void get_orientation(float & roll, float & pitch, float & yaw);
-    void get_accelerations(float & x, float & y, float & z);
-    void get_gyros(float & x, float & y, float & z);
-    void get_imu(float & ax, float & ay, float & az, float & gx, float & gy, float & gz);
-
-
-    void get_distance(int16_t & left, int16_t & center_left, int16_t & center, int16_t & center_right, int16_t & right);
-
-
-    bool get_touch_any();
-    bool get_touch_ok();
-    bool get_touch_cancel();
-    bool get_touch_center();
-    bool get_touch_up();
-    bool get_touch_left();
-    bool get_touch_down();
-    bool get_touch_right();
+    void stop();
 
 
     uint8_t get_ack();
@@ -206,16 +152,62 @@ class Arduino_Alvik{
     void drive(const float linear, const float angular);
 
     void get_pose(float & x, float & y, float & theta);
+    bool is_target_reached();
+    void rotate(const float angle, const bool blocking = true);
+    void move(const float distance, const bool blocking = true);
     
 
+    void get_line_sensors(int16_t & left, int16_t & center, int16_t & right);
+    
+    void get_color_raw(int16_t & red, int16_t & green, int16_t & blue);
+
+    void get_orientation(float & roll, float & pitch, float & yaw);
+    void get_accelerations(float & x, float & y, float & z);
+    void get_gyros(float & x, float & y, float & z);
+    void get_imu(float & ax, float & ay, float & az, float & gx, float & gy, float & gz);
+
+    void get_distance(int16_t & left, int16_t & center_left, int16_t & center, int16_t & center_right, int16_t & right);
+
+    bool get_touch_any();
+    bool get_touch_ok();
+    bool get_touch_cancel();
+    bool get_touch_center();
+    bool get_touch_up();
+    bool get_touch_left();
+    bool get_touch_down();
+    bool get_touch_right();
 
 
     void set_builtin_led(const bool value);
     void set_illuminator(const bool value);
 
     void set_servo_positions(const uint8_t a_position, const uint8_t b_position);
+    
+    void get_version(uint8_t & upper, uint8_t & middle, uint8_t & lower);
 };
 
 
 
 #endif
+
+
+/*
+     _            _       _             
+    / \   _ __ __| |_   _(_)_ __   ___  
+   / _ \ | '__/ _` | | | | | '_ \ / _ \ 
+  / ___ \| | | (_| | |_| | | | | | (_) |
+ /_/   \_\_|  \__,_|\__,_|_|_| |_|\___/ 
+     _    _       _ _                   
+    / \  | |_   _(_) | __               
+   / _ \ | \ \ / / | |/ /               
+  / ___ \| |\ V /| |   <                
+ /_/   \_\_| \_/ |_|_|\_\   
+
++---+----------------------------+--+----------+
+|   |      ()             ()     |  |          |
+|   |            \__/            |  |   /---\  |
+|    \__________________________/   |   |   |  |
+|                                   |   |   |  |
++-----------------------------------+---|   |--+
+   \\\___/                            \\\___/   
+*/
