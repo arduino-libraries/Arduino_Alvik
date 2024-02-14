@@ -124,7 +124,7 @@ int Arduino_Alvik::begin(){
   delay(2000);
 
   set_illuminator(true);
-
+  set_behaviour(BEHAVIOUR_ILLUMINATOR_RISE);
 
   return 0;
 }
@@ -369,16 +369,16 @@ void Arduino_Alvik::wait_for_target(){                                          
   while (!is_target_reached()){}
 }
 
-void Arduino_Alvik::rotate(const float angle, const bool blocking){
+void Arduino_Alvik::rotate(const float angle, const uint8_t unit, const bool blocking){
   delay(200);
-  msg_size = packeter->packetC1F('R', angle);
+  msg_size = packeter->packetC1F('R', convert_distance(angle, unit, DEG);
   uart->write(packeter->msg, msg_size);
   if (blocking){
     wait_for_target();
   }
 }
 
-void Arduino_Alvik::move(const float distance, const bool blocking, const uint8_t unit){
+void Arduino_Alvik::move(const float distance, const uint8_t unit, const bool blocking){
   delay(200);
   msg_size = packeter->packetC1F('G', convert_distance(distance, unit, MM));
   uart->write(packeter->msg, msg_size);
@@ -536,6 +536,11 @@ void Arduino_Alvik::set_illuminator(const bool value){
 
 void Arduino_Alvik::set_servo_positions(const uint8_t a_position, const uint8_t b_position){
   msg_size = packeter->packetC2B('S', a_position, b_position);
+  uart->write(packeter->msg, msg_size);
+}
+
+void Arduino_Alvik::set_behaviour(const uint8_t behaviour){
+  msg_size = packeter->packetC1B('B', behaviour);
   uart->write(packeter->msg, msg_size);
 }
 

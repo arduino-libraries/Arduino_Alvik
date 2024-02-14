@@ -51,6 +51,7 @@ const float SPEED_UNITS[4] = {1.0, 0.1, 100, 2.54};
 #define PERCENTAGE 3
 const float ANGLE_UNITS[4] = {1.0, 57.2957795131, 360.0, 3.6};
 
+
 #define RPM 0
 #define DEG_S 1
 #define RAD_S 2
@@ -59,6 +60,11 @@ const float ANGLE_UNITS[4] = {1.0, 57.2957795131, 360.0, 3.6};
 #define PERC 4
 #define PERCENTAGE 4
 const float ROTATIONAL_SPEED_UNITS[5] = {1.0, 1.6, 9.54929658551, 60.0, MOTOR_MAX_RPM/100.0};
+
+
+// behaviours
+#define BEHAVIOUR_DISABLED 0
+#define BEHAVIOUR_ILLUMINATOR_RISE 1
 
 
 #endif

@@ -162,8 +162,8 @@ class Arduino_Alvik{
 
     void get_pose(float & x, float & y, float & theta);
     bool is_target_reached();
-    void rotate(const float angle, const bool blocking = true);
-    void move(const float distance, const bool blocking = true, const uint8_t unit = CM);
+    void rotate(const float angle, const uint8_t unit = DEG, const bool blocking = true);
+    void move(const float distance, const uint8_t unit = CM, const bool blocking = true);
     
 
     void get_line_sensors(int16_t & left, int16_t & center, int16_t & right);
@@ -191,6 +191,8 @@ class Arduino_Alvik{
     void set_illuminator(const bool value);
 
     void set_servo_positions(const uint8_t a_position, const uint8_t b_position);
+
+    void set_behaviour(const uint8_t behaviour);
     
     void get_version(uint8_t & upper, uint8_t & middle, uint8_t & lower);
 };
