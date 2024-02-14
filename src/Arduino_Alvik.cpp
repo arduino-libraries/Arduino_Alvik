@@ -431,6 +431,14 @@ void Arduino_Alvik::get_distance(float & left, float & center_left, float & cent
   xSemaphoreGive(distance_semaphore);
 }
 
+void Arduino_Alvik::get_distance_top(float & top, const uint8_t unit){
+  top = convert_distance(distances[5], MM, unit);
+}
+
+void Arduino_Alvik::get_distance_top(float & bottom, const uint8_t unit){
+  bottom = convert_distance(distances[6], MM, unit);
+}
+
 
 void Arduino_Alvik::get_touch(){                                                  //it is private
   while (!xSemaphoreTake(touch_semaphore, 5)){}
