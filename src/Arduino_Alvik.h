@@ -174,7 +174,7 @@ class Arduino_Alvik{
 
     void get_distance(float & left, float & center_left, float & center, float & center_right, float & right, const uint8_t unit = CM);
     void get_distance_top(float & top, const uint8_t unit = CM);
-    void get_distance_top(float & bottom, const uint8_t unit = CM);
+    void get_distance_bottom(float & bottom, const uint8_t unit = CM);
 
 
     bool get_touch_any();
