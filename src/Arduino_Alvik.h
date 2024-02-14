@@ -33,6 +33,7 @@ class Arduino_Alvik{
 
     uint8_t last_ack;
 
+    float converted_angular;
 
 
     SemaphoreHandle_t version_semaphore;
@@ -84,13 +85,6 @@ class Arduino_Alvik{
     void wait_for_target();                                             // service function that wait for ack
 
 
-    float convert_distance(const float value, const uint8_t from_unit, const uint8_t to_unit);
-    float convert_speed(const float value, const uint8_t from_unit, const uint8_t to_unit);
-    float convert_angle(const float value, const uint8_t from_unit, const uint8_t to_unit);
-    float convert_rotational_speed(const float value, const uint8_t from_unit, const uint8_t to_unit);
-
-
-
 
     class ArduinoAlvikRgbLed{                                           // service class for RGB led
       private:
@@ -118,10 +112,11 @@ class Arduino_Alvik{
         uint8_t _label;
         float * _joint_velocity;
         float * _joint_position;
+        float converted_vel;
       public:
         ArduinoAlvikWheel(){};
         ArduinoAlvikWheel(HardwareSerial * serial, ucPack * packeter, uint8_t label, 
-                          float * joint_velocity, float * joint_position, float wheel_diameter = ROBOT_WHEEL_DIAMETER_MM);
+                          float * joint_velocity, float * joint_position, float wheel_diameter = WHEEL_DIAMETER_MM);
 
         void reset(const float initial_position = 0.0, const uint8_t unit = DEG);
 
@@ -157,10 +152,12 @@ class Arduino_Alvik{
     void get_wheels_position(float & left, float & right, const uint8_t unit = DEG);
     void set_wheels_position(const float left, const float right, const uint8_t unit = DEG);
 
-    void get_drive_speed(float & linear, float & angular);
-    void drive(const float linear, const float angular);
+    void get_drive_speed(float & linear, float & angular, const uint8_t linear_unit = CM_S, const uint8_t angular_unit = DEG_S);
+    void drive(const float linear, const float angular, const uint8_t linear_unit = CM_S, const uint8_t angular_unit = DEG_S);
 
-    void get_pose(float & x, float & y, float & theta);
+    void get_pose(float & x, float & y, float & theta, const uint8_t distance_unit = CM, const uint8_t angle_unit = DEG);
+    void reset_pose(const float x = 0.0, const float y = 0.0, const float theta = 0.0, const uint8_t distance_unit = CM, const uint8_t angle_unit = DEG);
+
     bool is_target_reached();
     void rotate(const float angle, const uint8_t unit = DEG, const bool blocking = true);
     void move(const float distance, const uint8_t unit = CM, const bool blocking = true);

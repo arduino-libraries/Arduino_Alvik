@@ -11,7 +11,7 @@
 
 
 #include "Arduino_Alvik.h"
-
+#include "unit_conversions.h"
 
 Arduino_Alvik::Arduino_Alvik(){
   update_semaphore = xSemaphoreCreateMutex();
@@ -266,54 +266,13 @@ uint8_t Arduino_Alvik::get_ack(){
 
 
 //-----------------------------------------------------------------------------------------------//
-//                                          update                                               //
-//-----------------------------------------------------------------------------------------------//
-
-float Arduino_Alvik::convert_distance(const float value, const uint8_t from_unit, const uint8_t to_unit){           //it is private
-  if ((to_unit<4)&&(from_unit<4)){
-    return value*DISTANCE_UNITS[from_unit]/DISTANCE_UNITS[to_unit];
-  }
-  else{
-    return value;
-  }
-}
-
-float Arduino_Alvik::convert_speed(const float value, const uint8_t from_unit, const uint8_t to_unit){               //it is private
-  if ((to_unit<4)&&(from_unit<4)){
-    return value*SPEED_UNITS[from_unit]/SPEED_UNITS[to_unit];
-  }
-  else{
-    return value;
-  }
-}
-
-float Arduino_Alvik::convert_angle(const float value, const uint8_t from_unit, const uint8_t to_unit){               //it is private
-  if ((to_unit<4)&&(from_unit<4)){
-    return value*ANGLE_UNITS[from_unit]/ANGLE_UNITS[to_unit];
-  }
-  else{
-    return value;
-  }
-}
-
-float Arduino_Alvik::convert_rotational_speed(const float value, const uint8_t from_unit, const uint8_t to_unit){    //it is private
-  if ((to_unit<5)&&(from_unit<5)){
-    return value*ROTATIONAL_SPEED_UNITS[from_unit]/ROTATIONAL_SPEED_UNITS[to_unit];
-  }
-  else{
-    return value;
-  }
-}
-
-
-//-----------------------------------------------------------------------------------------------//
 //                                          motion                                               //
 //-----------------------------------------------------------------------------------------------//
 
 void Arduino_Alvik::get_wheels_speed(float & left, float & right, const uint8_t unit){
   while (!xSemaphoreTake(joint_vel_semaphore, 5)){}
-  left = convert_rotational_speed(joints_velocity[0], RPM, unit);
-  right = convert_rotational_speed(joints_velocity[1], RPM, unit);
+  left = left_wheel.get_speed(unit);
+  right = right_wheel.get_speed(unit);
   xSemaphoreGive(joint_vel_semaphore);
 }
 
@@ -330,28 +289,44 @@ void Arduino_Alvik::get_wheels_position(float & left, float & right, const uint8
 }
 
 void Arduino_Alvik::set_wheels_position(const float left, const float right, const uint8_t unit){
-  msg_size = packeter->packetC2F('A', convert_rotational_speed(left, unit, DEG), convert_rotational_speed(right, unit, DEG));
+  msg_size = packeter->packetC2F('A', convert_angle(left, unit, DEG), convert_angle(right, unit, DEG));
   uart->write(packeter->msg, msg_size);
 }
 
-void Arduino_Alvik::get_drive_speed(float & linear, float & angular){
+void Arduino_Alvik::get_drive_speed(float & linear, float & angular, const uint8_t linear_unit, const uint8_t angular_unit){
   while (!xSemaphoreTake(robot_vel_semaphore, 5)){}
-  linear = robot_velocity[0];
-  angular = robot_velocity[1];
+  linear = convert_speed(robot_velocity[0], 'MM_S', linear_unit);
+  if (angular_unit == PERCENTAGE){
+    angular = (robot_velocity[1]/ROBOT_MAX_DEG_S)*100.0;
+  }
+  else{
+    angular = convert_rotational_speed(robot_velocity[1], DEG_S, angular_unit);
+  }  
   xSemaphoreGive(robot_vel_semaphore);
 }
 
-void Arduino_Alvik::drive(const float linear, const float angular){
-  msg_size = packeter->packetC2F('V', linear, angular);
+void Arduino_Alvik::drive(const float linear, const float angular, const uint8_t linear_unit, const uint8_t angular_unit){
+  if (angular_unit == PERCENTAGE){
+    converted_angular = (robot_velocity[1]/ROBOT_MAX_DEG_S)*100.0;
+  }
+  else{
+    converted_angular = convert_rotational_speed(robot_velocity[1], DEG_S, angular_unit);
+  } 
+  msg_size = packeter->packetC2F('V', convert_speed(linear, linear_unit, MM_S), angular);
   uart->write(packeter->msg, msg_size);
 }
 
-void Arduino_Alvik::get_pose(float & x, float & y, float & theta){
+void Arduino_Alvik::get_pose(float & x, float & y, float & theta, const uint8_t distance_unit, const uint8_t angle_unit){
   while (!xSemaphoreTake(robot_pos_semaphore, 5)){}
-  x = robot_pose[0];
-  y = robot_pose[1];
-  theta = robot_pose[2];
+  x = convert_distance(robot_pose[0], MM, distance_unit);
+  y = convert_distance(robot_pose[1], MM, distance_unit);
+  theta = convert_angle(robot_pose[2], DEG, angle_unit);
   xSemaphoreGive(robot_pos_semaphore);
+}
+
+void Arduino_Alvik::reset_pose(const float x, const float y, const float theta, const uint8_t distance_unit, const uint8_t angle_unit){
+  msg_size = packeter->packetC3F('Z', convert_distance(x, distance_unit, MM), convert_distance(y, distance_unit, MM), convert_distance(theta, angle_unit, DEG));
+  uart->write(packeter->msg, msg_size); 
 }
 
 bool Arduino_Alvik::is_target_reached(){
@@ -371,7 +346,7 @@ void Arduino_Alvik::wait_for_target(){                                          
 
 void Arduino_Alvik::rotate(const float angle, const uint8_t unit, const bool blocking){
   delay(200);
-  msg_size = packeter->packetC1F('R', convert_distance(angle, unit, DEG);
+  msg_size = packeter->packetC1F('R', convert_angle(angle, unit, DEG));
   uart->write(packeter->msg, msg_size);
   if (blocking){
     wait_for_target();
@@ -455,7 +430,6 @@ void Arduino_Alvik::get_distance(float & left, float & center_left, float & cent
   right = convert_distance(distances[4], MM, unit);
   xSemaphoreGive(distance_semaphore);
 }
-
 
 
 void Arduino_Alvik::get_touch(){                                                  //it is private
@@ -632,11 +606,20 @@ void Arduino_Alvik::ArduinoAlvikWheel::stop(){
 }
 
 void Arduino_Alvik::ArduinoAlvikWheel::set_speed(const float velocity, const uint8_t unit){
-  _msg_size = _packeter->packetC2B1F('W', _label, 'V', convert_rotational_speed(velocity, unit, RPM));
+  if (unit==PERCENTAGE){
+    converted_vel = (velocity/100.0)*MOTOR_MAX_RPM;
+  }
+  else{
+    converted_vel = convert_rotational_speed(velocity, unit, RPM);
+  }
+  _msg_size = _packeter->packetC2B1F('W', _label, 'V', converted_vel);
   _serial->write(_packeter->msg, _msg_size);
 }
 
 float Arduino_Alvik::ArduinoAlvikWheel::get_speed(const uint8_t unit){
+  if (unit==PERCENTAGE){
+    return ((* _joint_velocity)/MOTOR_MAX_RPM)*100.0;
+  }
   return convert_rotational_speed(* _joint_velocity, RPM, unit);
 }
 
