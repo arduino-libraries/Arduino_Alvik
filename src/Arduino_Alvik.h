@@ -161,6 +161,8 @@ class Arduino_Alvik{
     bool is_target_reached();
     void rotate(const float angle, const uint8_t unit = DEG, const bool blocking = true);
     void move(const float distance, const uint8_t unit = CM, const bool blocking = true);
+
+    void brake();
     
 
     void get_line_sensors(int16_t & left, int16_t & center, int16_t & right);

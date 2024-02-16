@@ -362,6 +362,10 @@ void Arduino_Alvik::move(const float distance, const uint8_t unit, const bool bl
   }
 }
 
+void Arduino_Alvik::brake(){
+  drive(0,0);
+}
+
 
 //-----------------------------------------------------------------------------------------------//
 //                                              sensors                                          //
