@@ -46,6 +46,8 @@ class Arduino_Alvik{
 
     SemaphoreHandle_t color_semaphore;
     int16_t color_sensor[3];
+    float rgb_normalized[3];
+    float hsv[3];
 
     SemaphoreHandle_t orientation_semaphore;
     float orientation[3];
