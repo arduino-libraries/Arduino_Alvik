@@ -441,7 +441,7 @@ void Arduino_Alvik::norm2hsv(const float r, const float g, const float b, float 
   }
 
   v = max;
-  
+
   float delta = max-min;
   
   if (delta < 0.00001){
@@ -469,10 +469,10 @@ void Arduino_Alvik::norm2hsv(const float r, const float g, const float b, float 
     else{
       h = 4.0+(r-g)/delta;
     }
-    h *= 60.0;
-    if (h < 0){
-      h+=360.0;
-    }
+  }
+  h *= 60.0;
+  if (h < 0){
+    h+=360.0;
   }
 }
 
