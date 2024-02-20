@@ -12,6 +12,7 @@
 
 #include "Arduino_Alvik.h"
 #include "unit_conversions.h"
+#include "default_colors.h"
 
 Arduino_Alvik::Arduino_Alvik(){
   update_semaphore = xSemaphoreCreateMutex();
@@ -59,6 +60,18 @@ int Arduino_Alvik::begin(){
   color_sensor[0] = 0;
   color_sensor[1] = 0;
   color_sensor[2] = 0;
+  rgb_normalized[0] = 0.0;
+  rgb_normalized[1] = 0.0;
+  rgb_normalized[2] = 0.0;
+  hsv[0] = 0.0;
+  hsv[1] = 0.0;
+  hsv[2] = 0.0;
+  white_cal[0] = WHITE_CAL[0];
+  white_cal[1] = WHITE_CAL[1];
+  white_cal[2] = WHITE_CAL[2];
+  black_cal[0] = BLACK_CAL[0];
+  black_cal[1] = BLACK_CAL[1];
+  black_cal[2] = BLACK_CAL[2];
 
   orientation[0] = 0.0;
   orientation[1] = 0.0;
@@ -386,6 +399,104 @@ void Arduino_Alvik::get_color_raw(int16_t & red, int16_t & green, int16_t & blue
   green = color_sensor[1];
   blue = color_sensor[2];
   xSemaphoreGive(color_semaphore);
+}
+
+float Arduino_Alvik::limit(float value, const float min, const float max){                //it is private
+  if (value < min){
+    value = min;
+  }
+  if (value > max){
+    value = max;
+  }
+  return value;
+}
+
+float Arduino_Alvik::normalize(float value, const float min, const float max){      //it is private
+  return (value - min)/(max-min);
+}
+
+void Arduino_Alvik::rgb2norm(const int16_t r, const int16_t g, const int16_t b, float & r_norm, float & g_norm, float & b_norm){
+  r_norm = limit(r, black_cal[0], white_cal[0]);
+  r_norm = normalize(r_norm, black_cal[0], white_cal[0]);
+  g_norm = limit(g, black_cal[1], white_cal[1]);
+  g_norm = normalize(g_norm, black_cal[1], white_cal[1]);
+  b_norm = limit(b, black_cal[2], white_cal[2]);
+  b_norm = normalize(b_norm, black_cal[2], white_cal[2]);
+}
+
+void Arduino_Alvik::norm2hsv(const float r, const float g, const float b, float & h, float & s, float & v){
+  float min = r;
+  float max = r;
+  if (min > g){
+    min = g;
+  }
+  if (min > b){
+    min = b;
+  }
+  if (max < g){
+    max = g;
+  }
+  if (max < b){
+    max = b;
+  }
+
+  v = max;
+  float delta = max-min;
+  
+  if (delta < 0.00001){
+    h = 0.0;
+    s = 0.0;
+    return;
+  }
+
+  if (max > 0.0){
+    s = delta/max;
+  }
+  else{
+    s = 0.0;
+    h = -1;
+    return;
+  }
+
+  if (r >= max){
+    h = (g-b)/delta;
+  }
+  else{
+    if (g >= max){
+      h = 2.0+(b-r)/delta;
+    }
+    else{
+      h = 4.0+(r-g)/delta;
+    }
+    h *= 60.0;
+    if (h < 0){
+      h+=360.0;
+    }
+  }
+}
+
+void Arduino_Alvik::get_color(float & value0, float & value1, float & value2, const uint8_t format){
+  while (!xSemaphoreTake(color_semaphore, 5)){}
+  rgb2norm(color_sensor[0], color_sensor[1], color_sensor[2], rgb_normalized[0], rgb_normalized[1], rgb_normalized[2]);
+  xSemaphoreGive(color_semaphore);
+  if (format == RGB){
+    value0 = rgb_normalized[0];
+    value1 = rgb_normalized[1];
+    value2 = rgb_normalized[2];
+  }
+  else{
+    if (format == HSV){
+      norm2hsv(rgb_normalized[0], rgb_normalized[1], rgb_normalized[2], hsv[0], hsv[1], hsv[2]);
+      value0 = hsv[0];
+      value1 = hsv[1];
+      value2 = hsv[2];
+    }
+    else{
+      value0 = -1;
+      value1 = -1;
+      value2 = -1;
+    }
+  }
 }
 
 

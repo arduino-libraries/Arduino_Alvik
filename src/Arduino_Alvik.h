@@ -46,6 +46,8 @@ class Arduino_Alvik{
 
     SemaphoreHandle_t color_semaphore;
     int16_t color_sensor[3];
+    int16_t white_cal[3];
+    int16_t black_cal[3];
     float rgb_normalized[3];
     float hsv[3];
 
@@ -85,6 +87,9 @@ class Arduino_Alvik{
     void get_touch();                                                   // service function to parse touch
     void set_leds();                                                    // service function to set leds by a byte
     void wait_for_target();                                             // service function that wait for ack
+
+    float limit(float value, const float min, const float max);
+    float normalize(float value, const float min, const float max);
 
 
 
@@ -170,6 +175,9 @@ class Arduino_Alvik{
     void get_line_sensors(int16_t & left, int16_t & center, int16_t & right);
     
     void get_color_raw(int16_t & red, int16_t & green, int16_t & blue);
+    void rgb2norm(const int16_t r, const int16_t g, const int16_t b, float & r_norm, float & g_norm, float & b_norm);
+    void norm2hsv(const float r, const float g, const float b, float & h, float & s, float & v);
+    void get_color(float & value0, float & value1, float & value2, const uint8_t format = RGB);
 
     void get_orientation(float & roll, float & pitch, float & yaw);
     void get_accelerations(float & x, float & y, float & z);

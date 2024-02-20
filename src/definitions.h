@@ -69,4 +69,9 @@ const float ROTATIONAL_SPEED_UNITS[4] = {1.0, 0.16666666666, 9.54929658551, 60.0
 #define BEHAVIOUR_ILLUMINATOR_RISE 1
 
 
+// colors
+#define RGB 0
+#define HSV 1
+
+
 #endif
