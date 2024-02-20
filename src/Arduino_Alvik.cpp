@@ -427,20 +427,21 @@ void Arduino_Alvik::rgb2norm(const int16_t r, const int16_t g, const int16_t b, 
 void Arduino_Alvik::norm2hsv(const float r, const float g, const float b, float & h, float & s, float & v){
   float min = r;
   float max = r;
-  if (min > g){
+  if (g < min){
     min = g;
   }
-  if (min > b){
+  if (b < min){
     min = b;
   }
-  if (max < g){
+  if (g > max){
     max = g;
   }
-  if (max < b){
+  if (b > max){
     max = b;
   }
 
   v = max;
+  
   float delta = max-min;
   
   if (delta < 0.00001){
