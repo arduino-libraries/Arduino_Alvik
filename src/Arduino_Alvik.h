@@ -16,6 +16,8 @@
 #include "Arduino.h"
 #include "ucPack.h"
 #include "definitions.h"
+#include <EEPROM.h>
+#include "default_colors.h"
 
 
 class Arduino_Alvik{
@@ -46,8 +48,8 @@ class Arduino_Alvik{
 
     SemaphoreHandle_t color_semaphore;
     int16_t color_sensor[3];
-    int16_t white_cal[3];
-    int16_t black_cal[3];
+    uint16_t white_cal[3];
+    uint16_t black_cal[3];
     float rgb_normalized[3];
     float hsv[3];
 
@@ -90,6 +92,7 @@ class Arduino_Alvik{
 
     float limit(float value, const float min, const float max);
     float normalize(float value, const float min, const float max);
+    void load_color_calibration();
 
 
 
@@ -143,6 +146,10 @@ class Arduino_Alvik{
     Arduino_Alvik::ArduinoAlvikRgbLed right_led;
     Arduino_Alvik::ArduinoAlvikWheel left_wheel;
     Arduino_Alvik::ArduinoAlvikWheel right_wheel;
+    String COLOR_LABELS[13] = {"black", "grey", "light grey", "white",
+                        "yellow", "light_green", "green",
+                        "light_blue", "blue", "violet",
+                        "brown", "orange", "red"};
 
     Arduino_Alvik();
 
@@ -178,6 +185,8 @@ class Arduino_Alvik{
     void rgb2norm(const int16_t r, const int16_t g, const int16_t b, float & r_norm, float & g_norm, float & b_norm);
     void norm2hsv(const float r, const float g, const float b, float & h, float & s, float & v);
     void get_color(float & value0, float & value1, float & value2, const uint8_t format = RGB);
+    uint8_t get_color_label(const float h, const float s, const float v);
+    void color_calibration(const uint8_t background = WHITE);
 
     void get_orientation(float & roll, float & pitch, float & yaw);
     void get_accelerations(float & x, float & y, float & z);

@@ -45,6 +45,7 @@ void Arduino_Alvik::reset_hw(){                                                 
 }
 
 int Arduino_Alvik::begin(){  
+
   last_ack = 0;
 
   version[0] = 0;
@@ -66,12 +67,16 @@ int Arduino_Alvik::begin(){
   hsv[0] = 0.0;
   hsv[1] = 0.0;
   hsv[2] = 0.0;
+
+  load_color_calibration();
+  /*
   white_cal[0] = WHITE_CAL[0];
   white_cal[1] = WHITE_CAL[1];
   white_cal[2] = WHITE_CAL[2];
   black_cal[0] = BLACK_CAL[0];
   black_cal[1] = BLACK_CAL[1];
   black_cal[2] = BLACK_CAL[2];
+  */
 
   orientation[0] = 0.0;
   orientation[1] = 0.0;
@@ -411,7 +416,7 @@ float Arduino_Alvik::limit(float value, const float min, const float max){      
   return value;
 }
 
-float Arduino_Alvik::normalize(float value, const float min, const float max){      //it is private
+float Arduino_Alvik::normalize(float value, const float min, const float max){            //it is private
   return (value - min)/(max-min);
 }
 
@@ -500,6 +505,170 @@ void Arduino_Alvik::get_color(float & value0, float & value1, float & value2, co
   }
 }
 
+uint8_t Arduino_Alvik::get_color_label(const float h, const float s, const float v){
+  if (s < MINIMUM_SATURATION){
+    if (v < 0.05){
+      return BLACK;
+    }
+    else{
+      if (v < GREY_VALUE){
+        return GREY;
+      }
+      else{
+        if (v < LIGHT_GREY_VALUE){
+          return LIGHT_GREY;
+        }
+        else{
+          return WHITE;
+        }
+      }
+    }
+  }
+  else{
+    if (v > COLOR_VALUE){
+      if ((h >= YELLOW_MIN) && (h < YELLOW_MAX)){
+        return YELLOW;
+      }
+      else{
+        if ((h >= YELLOW_MAX) && (h < LIGHT_GREEN_MAX)){
+          return LIGHT_GREEN;
+        }
+        else{
+          if ((h >= LIGHT_GREEN_MAX) && (h < GREEN_MAX)){
+            return GREEN;
+          }
+          else{
+            if ((h >= GREEN_MAX) && (h < LIGHT_BLUE_MAX)){
+              return LIGHT_BLUE;
+            }
+            else{
+              if ((h >= LIGHT_BLUE_MAX) && (h < BLUE_MAX)){
+                return BLUE;
+              }
+              else{
+                if ((h >= BLUE_MAX) && (h < VIOLET_MAX)){
+                  return VIOLET;
+                }
+                else{
+                  if ((v < BROWN_MAX_VALUE) && (v < BROWN_MAX_SATURATION)){
+                    return BROWN;
+                  }
+                  else{
+                    if (v > ORANGE_MIN_VALUE){
+                      return ORANGE;
+                    }
+                    else{
+                      return RED;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    else{
+      return BLACK;
+    }
+  }
+}
+
+void Arduino_Alvik::color_calibration(const uint8_t background){
+  if ((background != BLACK)&&(background != WHITE)){
+    return;
+  }
+  int red_avg = 0;
+  int green_avg = 0;
+  int blue_avg = 0;
+  int16_t red, green, blue;
+
+  for (int i=0; i<CALIBRATION_ITERATIONS; i++){
+    get_color_raw(red, green, blue);
+    red_avg += red;
+    green_avg += green;
+    blue_avg += blue;
+    delay(10);
+  }
+
+  red_avg = red_avg/float(CALIBRATION_ITERATIONS);
+  green_avg = green_avg/float(CALIBRATION_ITERATIONS);
+  blue_avg = blue_avg/float(CALIBRATION_ITERATIONS);
+  Serial.println("AVG");
+  Serial.print(red_avg);
+  Serial.print("\t");
+  Serial.print(green_avg);
+  Serial.print("\t");
+  Serial.print(blue_avg);
+  Serial.print("\t");
+  Serial.println(background);
+  EEPROM.begin(COLOR_STACK);
+
+  if (background == WHITE){
+    EEPROM.writeUShort(WHITE_OFFSET, (int16_t)red_avg);
+    EEPROM.writeUShort(WHITE_OFFSET+2, (int16_t)green_avg);
+    EEPROM.writeUShort(WHITE_OFFSET+4, (int16_t)blue_avg);
+  }
+  else{
+    EEPROM.writeUShort(BLACK_OFFSET, (int16_t)red_avg);
+    EEPROM.writeUShort(BLACK_OFFSET+2,(int16_t) green_avg);
+    EEPROM.writeUShort(BLACK_OFFSET+4, (int16_t)blue_avg);
+  }
+  EEPROM.end();
+
+  Serial.println("SAVED");
+  Serial.print(red_avg);
+  Serial.print("\t");
+  Serial.print(green_avg);
+  Serial.print("\t");
+  Serial.print(blue_avg);
+  Serial.print("\t");
+  Serial.println(background);
+  load_color_calibration();
+}
+
+void Arduino_Alvik::load_color_calibration(){
+  int16_t crgb[3];
+  EEPROM.begin(COLOR_STACK);
+
+  crgb[0] = EEPROM.readUShort(WHITE_OFFSET);
+  crgb[1] = EEPROM.readUShort(WHITE_OFFSET+2);
+  crgb[2] = EEPROM.readUShort(WHITE_OFFSET+4);
+  if ((crgb[0]!=0)&&(crgb[1]!=0)&&(crgb[2]!=0)){
+    white_cal[0] = crgb[0];
+    white_cal[1] = crgb[1];
+    white_cal[2] = crgb[2];
+    black_cal[0] = EEPROM.readUShort(BLACK_OFFSET);
+    black_cal[1] = EEPROM.readUShort(BLACK_OFFSET+2);
+    black_cal[2] = EEPROM.readUShort(BLACK_OFFSET+4);
+  }
+  else{
+    white_cal[0] = WHITE_DEFAULT_RED;
+    white_cal[1] = WHITE_DEFAULT_GREEN;
+    white_cal[2] = WHITE_DEFAULT_BLUE;
+    black_cal[0] = BLACK_DEFAULT_RED;
+    black_cal[1] = BLACK_DEFAULT_GREEN ;
+    black_cal[2] = BLACK_DEFAULT_BLUE;
+  }
+  delay(10000);
+  Serial.println("PARAMETERS");
+  Serial.print(white_cal[0]);
+  Serial.print("\t");
+  Serial.print(white_cal[1]);
+  Serial.print("\t");
+  Serial.print(white_cal[2]);
+  Serial.print("\t");
+  Serial.print(black_cal[0]);
+  Serial.print("\t");
+  Serial.print(black_cal[1]);
+  Serial.print("\t");
+  Serial.print(black_cal[2]);
+  Serial.print("\n");
+    delay(10000);
+  EEPROM.end();
+
+
+}
 
 void Arduino_Alvik::get_orientation(float & roll, float & pitch, float & yaw){
   while (!xSemaphoreTake(orientation_semaphore, 5)){}
