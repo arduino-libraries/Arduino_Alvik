@@ -15,6 +15,9 @@
 
 #include "Arduino.h"
 #include "ucPack.h"
+#include "definitions.h"
+#include <EEPROM.h>
+#include "default_colors.h"
 
 
 class Arduino_Alvik{
@@ -32,6 +35,7 @@ class Arduino_Alvik{
 
     uint8_t last_ack;
 
+    float converted_angular;
 
 
     SemaphoreHandle_t version_semaphore;
@@ -44,6 +48,10 @@ class Arduino_Alvik{
 
     SemaphoreHandle_t color_semaphore;
     int16_t color_sensor[3];
+    uint16_t white_cal[3];
+    uint16_t black_cal[3];
+    float rgb_normalized[3];
+    float hsv[3];
 
     SemaphoreHandle_t orientation_semaphore;
     float orientation[3];
@@ -72,6 +80,7 @@ class Arduino_Alvik{
 
 
     void reset_hw();                                                    // reset the robot
+    void wait_for_ack();
        
     bool read_message();                                                // return first available packet
     int parse_message();                                                // robot commands logic
@@ -81,6 +90,11 @@ class Arduino_Alvik{
     void get_touch();                                                   // service function to parse touch
     void set_leds();                                                    // service function to set leds by a byte
     void wait_for_target();                                             // service function that wait for ack
+
+    float limit(float value, const float min, const float max);
+    float normalize(float value, const float min, const float max);
+    void load_color_calibration();
+
 
 
     class ArduinoAlvikRgbLed{                                           // service class for RGB led
@@ -109,21 +123,22 @@ class Arduino_Alvik{
         uint8_t _label;
         float * _joint_velocity;
         float * _joint_position;
+        float converted_vel;
       public:
         ArduinoAlvikWheel(){};
         ArduinoAlvikWheel(HardwareSerial * serial, ucPack * packeter, uint8_t label, 
-                          float * joint_velocity, float * joint_position, float wheel_diameter=ROBOT_WHEEL_DIAMETER_MM);
+                          float * joint_velocity, float * joint_position, float wheel_diameter = WHEEL_DIAMETER_MM);
 
-        void reset(const float initial_position = 0.0);
+        void reset(const float initial_position = 0.0, const uint8_t unit = DEG);
 
         void set_pid_gains(const float kp, const float ki, const float kd);
 
         void stop();
-        void set_speed(const float velocity);
-        float get_speed();
+        void set_speed(const float velocity, const uint8_t unit = RPM);
+        float get_speed(const uint8_t unit = RPM);
 
-        void set_position(const float position);
-        float get_position();
+        void set_position(const float position, const uint8_t unit = DEG);
+        float get_position(const uint8_t unit = DEG);
     };
 
 
@@ -132,41 +147,60 @@ class Arduino_Alvik{
     Arduino_Alvik::ArduinoAlvikRgbLed right_led;
     Arduino_Alvik::ArduinoAlvikWheel left_wheel;
     Arduino_Alvik::ArduinoAlvikWheel right_wheel;
+    String COLOR_LABELS[13] = {"black", "grey", "light grey", "white",
+                        "yellow", "light_green", "green",
+                        "light_blue", "blue", "violet",
+                        "brown", "orange", "red"};
 
     Arduino_Alvik();
 
     int begin();
     void stop();
+    bool is_on();
+    void idle();
 
 
     uint8_t get_ack();
 
 
-    void get_wheels_speed(float & left, float & right);
-    void set_wheels_speed(const float left, const float right);
+    void get_wheels_speed(float & left, float & righ, const uint8_t unit = RPM);
+    void set_wheels_speed(const float left, const float right, const uint8_t unit = RPM);
 
-    void get_wheels_position(float & left, float & right);
-    void set_wheels_position(const float left, const float right);
+    void get_wheels_position(float & left, float & right, const uint8_t unit = DEG);
+    void set_wheels_position(const float left, const float right, const uint8_t unit = DEG);
 
-    void get_drive_speed(float & linear, float & angular);
-    void drive(const float linear, const float angular);
+    void get_drive_speed(float & linear, float & angular, const uint8_t linear_unit = CM_S, const uint8_t angular_unit = DEG_S);
+    void drive(const float linear, const float angular, const uint8_t linear_unit = CM_S, const uint8_t angular_unit = DEG_S);
 
-    void get_pose(float & x, float & y, float & theta);
+    void get_pose(float & x, float & y, float & theta, const uint8_t distance_unit = CM, const uint8_t angle_unit = DEG);
+    void reset_pose(const float x = 0.0, const float y = 0.0, const float theta = 0.0, const uint8_t distance_unit = CM, const uint8_t angle_unit = DEG);
+
     bool is_target_reached();
-    void rotate(const float angle, const bool blocking = true);
-    void move(const float distance, const bool blocking = true);
+    void rotate(const float angle, const uint8_t unit = DEG, const bool blocking = true);
+    void move(const float distance, const uint8_t unit = CM, const bool blocking = true);
+
+    void brake();
     
 
     void get_line_sensors(int16_t & left, int16_t & center, int16_t & right);
     
     void get_color_raw(int16_t & red, int16_t & green, int16_t & blue);
+    void rgb2norm(const int16_t r, const int16_t g, const int16_t b, float & r_norm, float & g_norm, float & b_norm);
+    void norm2hsv(const float r, const float g, const float b, float & h, float & s, float & v);
+    void get_color(float & value0, float & value1, float & value2, const uint8_t format = RGB);
+    uint8_t get_color_label(const float h, const float s, const float v);
+    uint8_t get_color_label();
+    void color_calibration(const uint8_t background = WHITE);
 
     void get_orientation(float & roll, float & pitch, float & yaw);
     void get_accelerations(float & x, float & y, float & z);
     void get_gyros(float & x, float & y, float & z);
     void get_imu(float & ax, float & ay, float & az, float & gx, float & gy, float & gz);
 
-    void get_distance(int16_t & left, int16_t & center_left, int16_t & center, int16_t & center_right, int16_t & right);
+    void get_distance(float & left, float & center_left, float & center, float & center_right, float & right, const uint8_t unit = CM);
+    float get_distance_top(const uint8_t unit = CM);
+    float get_distance_bottom(const uint8_t unit = CM);
+
 
     bool get_touch_any();
     bool get_touch_ok();
@@ -182,6 +216,8 @@ class Arduino_Alvik{
     void set_illuminator(const bool value);
 
     void set_servo_positions(const uint8_t a_position, const uint8_t b_position);
+
+    void set_behaviour(const uint8_t behaviour);
     
     void get_version(uint8_t & upper, uint8_t & middle, uint8_t & lower);
 };
