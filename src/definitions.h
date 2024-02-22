@@ -18,6 +18,7 @@
 #define CHECK_STM32 A6
 #define BOOT_STM32 D2
 #define RESET_STM32 D3
+#define NANO_CHK D4
 #define UART 0
 #define UART_BAUD_RATE 460800
 

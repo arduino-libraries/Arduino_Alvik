@@ -44,7 +44,15 @@ void Arduino_Alvik::reset_hw(){                                                 
   delay(100);
 }
 
+void Arduino_Alvik::wait_for_ack(){
+  while(last_ack != 0x00){
+    delay(20);
+  }
+}
+
 int Arduino_Alvik::begin(){  
+  pinMode(LED_RED, OUTPUT);
+  pinMode(LED_GREEN, OUTPUT);
 
   last_ack = 0;
 
@@ -120,11 +128,14 @@ int Arduino_Alvik::begin(){
   uart->flush();
 
   
-  pinMode(CHECK_STM32, INPUT_PULLUP);
+  pinMode(CHECK_STM32, INPUT_PULLDOWN);
   pinMode(RESET_STM32, OUTPUT);
+  pinMode(NANO_CHK, OUTPUT);
+  digitalWrite(NANO_CHK, LOW);
 
-  if (digitalRead(CHECK_STM32)==0){
-    return -1;
+  if (!is_on()){
+    delay(1000);
+    idle();
   }
 
   //begin_update_thread();
@@ -132,14 +143,8 @@ int Arduino_Alvik::begin(){
 
   delay(100);
   reset_hw();
-  delay(1000);
 
-
-  while (last_ack!=0x00){
-    delay(20);
-  }
-
-  delay(2000);
+  wait_for_ack();
 
   set_illuminator(true);
   set_behaviour(BEHAVIOUR_ILLUMINATOR_RISE);
@@ -151,6 +156,36 @@ void Arduino_Alvik::stop(){
   set_wheels_speed(0,0);
 }
 
+bool Arduino_Alvik::is_on(){
+  if (digitalRead(CHECK_STM32)==0){
+    return false;
+  }
+  return true;
+}
+
+void Arduino_Alvik::idle(){
+  digitalWrite(NANO_CHK, HIGH);
+  delay(500);
+  while(!is_on()){
+    //read battery value
+    /*
+    pinMode(A4, OUTPUT);
+    pinMode(A5, OUTPUT);
+    digitalWrite(A4, HIGH);
+    digitalWrite(A5, HIGH);
+    delay(100);
+    digitalWrite(A4, LOW);
+    digitalWrite(A5, LOW);
+    delay(100);
+    Wire.begin();
+    */
+    digitalWrite(LED_GREEN, HIGH);
+    delay(1000);
+    digitalWrite(LED_GREEN, LOW);
+    delay(1000);
+  }
+}
+
 
 //-----------------------------------------------------------------------------------------------//
 //                                          update                                               //
@@ -158,6 +193,15 @@ void Arduino_Alvik::stop(){
 
 void Arduino_Alvik::update(const int delay_value){                                //it is private
   while (update_task != NULL){
+    if (!is_on()){
+      idle();
+      reset_hw();
+      uart->flush();
+      delay(1000);
+      wait_for_ack();
+      set_illuminator(true);
+      set_behaviour(BEHAVIOUR_ILLUMINATOR_RISE);
+    }
     if (read_message()){
       parse_message();
     }

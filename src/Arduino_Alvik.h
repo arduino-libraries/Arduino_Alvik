@@ -80,6 +80,7 @@ class Arduino_Alvik{
 
 
     void reset_hw();                                                    // reset the robot
+    void wait_for_ack();
        
     bool read_message();                                                // return first available packet
     int parse_message();                                                // robot commands logic
@@ -155,6 +156,8 @@ class Arduino_Alvik{
 
     int begin();
     void stop();
+    bool is_on();
+    void idle();
 
 
     uint8_t get_ack();
