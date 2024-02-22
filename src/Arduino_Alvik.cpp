@@ -574,6 +574,12 @@ uint8_t Arduino_Alvik::get_color_label(const float h, const float s, const float
   }
 }
 
+uint8_t Arduino_Alvik::get_color_label(){
+  float h,s,v;
+  get_color(h, s, v, HSV);
+  return get_color_label(h, s, v);
+}
+
 void Arduino_Alvik::color_calibration(const uint8_t background){
   if ((background != BLACK)&&(background != WHITE)){
     return;

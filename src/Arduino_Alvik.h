@@ -186,6 +186,7 @@ class Arduino_Alvik{
     void norm2hsv(const float r, const float g, const float b, float & h, float & s, float & v);
     void get_color(float & value0, float & value1, float & value2, const uint8_t format = RGB);
     uint8_t get_color_label(const float h, const float s, const float v);
+    uint8_t get_color_label();
     void color_calibration(const uint8_t background = WHITE);
 
     void get_orientation(float & roll, float & pitch, float & yaw);
