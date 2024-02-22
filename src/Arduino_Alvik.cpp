@@ -594,16 +594,8 @@ void Arduino_Alvik::color_calibration(const uint8_t background){
   red_avg = red_avg/float(CALIBRATION_ITERATIONS);
   green_avg = green_avg/float(CALIBRATION_ITERATIONS);
   blue_avg = blue_avg/float(CALIBRATION_ITERATIONS);
-  Serial.println("AVG");
-  Serial.print(red_avg);
-  Serial.print("\t");
-  Serial.print(green_avg);
-  Serial.print("\t");
-  Serial.print(blue_avg);
-  Serial.print("\t");
-  Serial.println(background);
-  EEPROM.begin(COLOR_STACK);
 
+  EEPROM.begin(COLOR_SIZE);
   if (background == WHITE){
     EEPROM.writeUShort(WHITE_OFFSET, (int16_t)red_avg);
     EEPROM.writeUShort(WHITE_OFFSET+2, (int16_t)green_avg);
@@ -615,29 +607,15 @@ void Arduino_Alvik::color_calibration(const uint8_t background){
     EEPROM.writeUShort(BLACK_OFFSET+4, (int16_t)blue_avg);
   }
   EEPROM.end();
-
-  Serial.println("SAVED");
-  Serial.print(red_avg);
-  Serial.print("\t");
-  Serial.print(green_avg);
-  Serial.print("\t");
-  Serial.print(blue_avg);
-  Serial.print("\t");
-  Serial.println(background);
   load_color_calibration();
 }
 
 void Arduino_Alvik::load_color_calibration(){
-  int16_t crgb[3];
-  EEPROM.begin(COLOR_STACK);
-
-  crgb[0] = EEPROM.readUShort(WHITE_OFFSET);
-  crgb[1] = EEPROM.readUShort(WHITE_OFFSET+2);
-  crgb[2] = EEPROM.readUShort(WHITE_OFFSET+4);
-  if ((crgb[0]!=0)&&(crgb[1]!=0)&&(crgb[2]!=0)){
-    white_cal[0] = crgb[0];
-    white_cal[1] = crgb[1];
-    white_cal[2] = crgb[2];
+  EEPROM.begin(COLOR_SIZE);
+  if ((EEPROM.readUShort(WHITE_OFFSET)!=0)&&(EEPROM.readUShort(WHITE_OFFSET+2)!=0)&&(EEPROM.readUShort(WHITE_OFFSET+4)!=0)){
+    white_cal[0] = EEPROM.readUShort(WHITE_OFFSET);
+    white_cal[1] = EEPROM.readUShort(WHITE_OFFSET+2);
+    white_cal[2] = EEPROM.readUShort(WHITE_OFFSET+4);
     black_cal[0] = EEPROM.readUShort(BLACK_OFFSET);
     black_cal[1] = EEPROM.readUShort(BLACK_OFFSET+2);
     black_cal[2] = EEPROM.readUShort(BLACK_OFFSET+4);
@@ -650,24 +628,7 @@ void Arduino_Alvik::load_color_calibration(){
     black_cal[1] = BLACK_DEFAULT_GREEN ;
     black_cal[2] = BLACK_DEFAULT_BLUE;
   }
-  delay(10000);
-  Serial.println("PARAMETERS");
-  Serial.print(white_cal[0]);
-  Serial.print("\t");
-  Serial.print(white_cal[1]);
-  Serial.print("\t");
-  Serial.print(white_cal[2]);
-  Serial.print("\t");
-  Serial.print(black_cal[0]);
-  Serial.print("\t");
-  Serial.print(black_cal[1]);
-  Serial.print("\t");
-  Serial.print(black_cal[2]);
-  Serial.print("\n");
-    delay(10000);
   EEPROM.end();
-
-
 }
 
 void Arduino_Alvik::get_orientation(float & roll, float & pitch, float & yaw){

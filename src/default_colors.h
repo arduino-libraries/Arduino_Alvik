@@ -26,7 +26,7 @@
 
 #define WHITE_OFFSET 0
 #define BLACK_OFFSET 6
-#define COLOR_STACK 20
+#define COLOR_SIZE 20
 
 #define CALIBRATION_ITERATIONS 100
 
