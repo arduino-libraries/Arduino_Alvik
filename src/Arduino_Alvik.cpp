@@ -683,12 +683,12 @@ void Arduino_Alvik::get_distance(float & left, float & center_left, float & cent
   xSemaphoreGive(distance_semaphore);
 }
 
-void Arduino_Alvik::get_distance_top(float & top, const uint8_t unit){
-  top = convert_distance(distances[5], MM, unit);
+float Arduino_Alvik::get_distance_top(const uint8_t unit){
+  return convert_distance(distances[5], MM, unit);
 }
 
-void Arduino_Alvik::get_distance_bottom(float & bottom, const uint8_t unit){
-  bottom = convert_distance(distances[6], MM, unit);
+float Arduino_Alvik::get_distance_bottom(const uint8_t unit){
+  return convert_distance(distances[6], MM, unit);
 }
 
 
