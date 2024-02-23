@@ -315,6 +315,11 @@ int Arduino_Alvik::parse_message(){                                             
       xSemaphoreGive(version_semaphore);
       break;
 
+    // get battery parcentage: state of charge
+    case 'p':
+      packeter->unpacketC1F(code, battery);
+      break;
+
     // nothing is parsed, the command is newer to this library
     default:
       return -1;
@@ -780,6 +785,11 @@ bool Arduino_Alvik::get_touch_down(){
 bool Arduino_Alvik::get_touch_right(){
   get_touch();
   return touch_bits & 0b10000000;
+}
+
+
+float Arduino_Alvik::get_battery_charge(){
+  return battery;
 }
 
 

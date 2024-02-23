@@ -77,6 +77,8 @@ class Arduino_Alvik{
     SemaphoreHandle_t robot_pos_semaphore;
     float robot_pose[3];
 
+    float battery;
+
 
 
     void reset_hw();                                                    // reset the robot
@@ -220,6 +222,8 @@ class Arduino_Alvik{
     void set_behaviour(const uint8_t behaviour);
     
     void get_version(uint8_t & upper, uint8_t & middle, uint8_t & lower);
+
+    float get_battery_charge();
 };
 
 
