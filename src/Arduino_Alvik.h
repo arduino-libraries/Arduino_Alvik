@@ -163,7 +163,7 @@ class Arduino_Alvik{
 
     Arduino_Alvik();
 
-    int begin(const bool verborse = true, const uint8_t core = RUN_ON_CORE_0);
+    int begin(const bool verbose = true, const uint8_t core = RUN_ON_CORE_0);
     void stop();
     bool is_on();
     void idle();
