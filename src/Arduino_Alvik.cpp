@@ -50,9 +50,11 @@ void Arduino_Alvik::wait_for_ack(){
   }
 }
 
-int Arduino_Alvik::begin(){  
+int Arduino_Alvik::begin(const bool verbose, const uint8_t core){  
   pinMode(LED_RED, OUTPUT);
   pinMode(LED_GREEN, OUTPUT);
+
+  verbose_output = verbose;
 
   last_ack = 0;
 
@@ -121,6 +123,9 @@ int Arduino_Alvik::begin(){
   robot_pose[1] = 0.0;
   robot_pose[2] = 0.0;
 
+  battery = 0.0;
+  battery_soc = 0.0;
+
 
 
 
@@ -139,7 +144,7 @@ int Arduino_Alvik::begin(){
   }
 
   //begin_update_thread();
-  xTaskCreatePinnedToCore(this->update_thread, "update", 10000, this, 1, &update_task, 0);
+  xTaskCreatePinnedToCore(this->update_thread, "update", 10000, this, 1, &update_task, core);
 
   delay(100);
   reset_hw();
@@ -166,24 +171,28 @@ bool Arduino_Alvik::is_on(){
 void Arduino_Alvik::idle(){
   digitalWrite(NANO_CHK, HIGH);
   delay(500);
+  bool led_value=false;
   while(!is_on()){
     //read battery value
-    /*
-    pinMode(A4, OUTPUT);
-    pinMode(A5, OUTPUT);
-    digitalWrite(A4, HIGH);
-    digitalWrite(A5, HIGH);
-    delay(100);
-    digitalWrite(A4, LOW);
-    digitalWrite(A5, LOW);
-    delay(100);
-    Wire.begin();
-    */
-    digitalWrite(LED_GREEN, HIGH);
-    delay(1000);
-    digitalWrite(LED_GREEN, LOW);
+    battery_measure();
+    if (verbose_output){
+      Serial.print(round(battery_soc));
+      Serial.println("%");
+    }
+    if (battery_soc>99){
+      digitalWrite(LED_GREEN, LOW);
+      digitalWrite(LED_RED, HIGH);
+    }
+    else{
+      digitalWrite(LED_GREEN, HIGH);
+      led_value = !led_value;
+      digitalWrite(LED_RED, led_value);
+    }
     delay(1000);
   }
+  digitalWrite(LED_GREEN, HIGH);
+  digitalWrite(LED_RED, HIGH);
+  digitalWrite(NANO_CHK, LOW);
 }
 
 
@@ -438,6 +447,33 @@ void Arduino_Alvik::brake(){
 //                                              sensors                                          //
 //-----------------------------------------------------------------------------------------------//
 
+float Arduino_Alvik::battery_measure(){                                             //it is private
+  pinMode(A4,OUTPUT);
+  pinMode(A5,OUTPUT);
+  digitalWrite(A4,HIGH);
+  digitalWrite(A5,HIGH);
+  delay(100);
+  digitalWrite(A4,LOW);
+  digitalWrite(A5,LOW);
+  Wire.begin();
+  Wire.beginTransmission(0x36);
+  Wire.write(0x06);
+  if (Wire.endTransmission(false)!=0){
+    Serial.println("Error on opening BMS");
+    while(1);
+  }
+  else{
+    Wire.requestFrom(0x36, 2);
+    battery_v[0] = Wire.read();
+    battery_v[1] = Wire.read();
+    battery_val = (battery_v[1] << 8) + battery_v[0]; 
+    battery_soc = battery_val * 0.00390625;
+  }
+  Wire.end();
+  return battery_soc;
+}
+
+
 void Arduino_Alvik::get_line_sensors(int16_t & left, int16_t & center, int16_t & right){
   while (!xSemaphoreTake(line_semaphore, 5)){}
   left = line_sensors[0];
@@ -554,7 +590,7 @@ void Arduino_Alvik::get_color(float & value0, float & value1, float & value2, co
   }
 }
 
-uint8_t Arduino_Alvik::get_color_label(const float h, const float s, const float v){
+uint8_t Arduino_Alvik::get_color_id(const float h, const float s, const float v){
   if (s < MINIMUM_SATURATION){
     if (v < 0.05){
       return BLACK;
@@ -623,10 +659,18 @@ uint8_t Arduino_Alvik::get_color_label(const float h, const float s, const float
   }
 }
 
-uint8_t Arduino_Alvik::get_color_label(){
+uint8_t Arduino_Alvik::get_color_id(){
   float h,s,v;
   get_color(h, s, v, HSV);
-  return get_color_label(h, s, v);
+  return get_color_id(h, s, v);
+}
+
+String Arduino_Alvik::get_color_label(const float h, const float s, const float v){
+  return COLOR_LABELS[get_color_id(h, s, v)];
+}
+
+String Arduino_Alvik::get_color_label(){
+  return COLOR_LABELS[get_color_id()];
 }
 
 void Arduino_Alvik::color_calibration(const uint8_t background){
@@ -788,8 +832,8 @@ bool Arduino_Alvik::get_touch_right(){
 }
 
 
-float Arduino_Alvik::get_battery_charge(){
-  return battery;
+int Arduino_Alvik::get_battery_charge(){
+  return round(battery);
 }
 
 

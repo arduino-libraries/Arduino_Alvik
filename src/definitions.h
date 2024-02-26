@@ -15,6 +15,11 @@
 
 #include "Arduino.h"
 
+#define RUN_ON_CORE_0 0
+#define RUN_ON_CORE_1 1
+#define NO_VERBOSE 0
+#define VERBOSE 1
+
 #define CHECK_STM32 A6
 #define BOOT_STM32 D2
 #define RESET_STM32 D3
