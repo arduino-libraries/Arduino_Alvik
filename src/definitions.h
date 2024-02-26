@@ -27,6 +27,8 @@
 #define UART 0
 #define UART_BAUD_RATE 460800
 
+#define CHARGE_THRESHOLD 97
+
 const float WHEEL_DIAMETER_MM = 34.0;
 const float WHEEL_TRACK_MM = 89.0;
 const float MOTOR_MAX_RPM = 70.0;

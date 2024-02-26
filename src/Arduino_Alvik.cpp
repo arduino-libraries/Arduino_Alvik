@@ -179,7 +179,7 @@ void Arduino_Alvik::idle(){
       Serial.print(round(battery_soc));
       Serial.println("%");
     }
-    if (battery_soc>99){
+    if (battery_soc>CHARGE_THRESHOLD){
       digitalWrite(LED_GREEN, LOW);
       digitalWrite(LED_RED, HIGH);
     }
