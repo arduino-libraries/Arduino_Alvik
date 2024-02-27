@@ -30,10 +30,6 @@ void setup() {
   while(!alvik.get_touch_ok()){
     delay(50);
   }
-
-  alvik.left_led.set_color(0,1,0);
-  alvik.right_led.set_color(0,1,0);
-
 }
 
 void loop() {
@@ -66,6 +62,7 @@ void loop() {
     alvik.set_wheels_speed(30-control, 30+control);
     delay(100);
   }
+  
   while (!alvik.get_touch_ok()){
     alvik.left_led.set_color(0,0,1);
     alvik.right_led.set_color(0,0,1);
