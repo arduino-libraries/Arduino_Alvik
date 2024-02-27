@@ -474,7 +474,7 @@ float Arduino_Alvik::battery_measure(){                                         
 }
 
 
-void Arduino_Alvik::get_line_sensors(int16_t & left, int16_t & center, int16_t & right){
+void Arduino_Alvik::get_line_sensors(int & left, int & center, int & right){
   while (!xSemaphoreTake(line_semaphore, 5)){}
   left = line_sensors[0];
   center = line_sensors[1];

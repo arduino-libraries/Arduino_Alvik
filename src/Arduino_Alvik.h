@@ -191,9 +191,9 @@ class Arduino_Alvik{
     void brake();
     
 
-    void get_line_sensors(int16_t & left, int16_t & center, int16_t & right);
+    void get_line_sensors(int & left, int & center, int & right);
     
-    void get_color_raw(int16_t & red, int16_t & green, int16_t & blue);
+    void get_color_raw(int & red, int & green, int & blue);
     void rgb2norm(const int16_t r, const int16_t g, const int16_t b, float & r_norm, float & g_norm, float & b_norm);
     void norm2hsv(const float r, const float g, const float b, float & h, float & s, float & v);
     void get_color(float & value0, float & value1, float & value2, const uint8_t format = RGB);
