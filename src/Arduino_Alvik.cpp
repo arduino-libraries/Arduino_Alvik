@@ -483,7 +483,7 @@ void Arduino_Alvik::get_line_sensors(int & left, int & center, int & right){
 }
 
 
-void Arduino_Alvik::get_color_raw(int16_t & red, int16_t & green, int16_t & blue){
+void Arduino_Alvik::get_color_raw(int & red, int & green, int & blue){
   while (!xSemaphoreTake(color_semaphore, 5)){}
   red = color_sensor[0];
   green = color_sensor[1];
