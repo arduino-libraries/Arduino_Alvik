@@ -680,7 +680,7 @@ void Arduino_Alvik::color_calibration(const uint8_t background){
   int red_avg = 0;
   int green_avg = 0;
   int blue_avg = 0;
-  int16_t red, green, blue;
+  int red, green, blue;
 
   for (int i=0; i<CALIBRATION_ITERATIONS; i++){
     get_color_raw(red, green, blue);
