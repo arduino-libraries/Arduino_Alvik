@@ -18,6 +18,7 @@
 #include "definitions.h"
 #include <EEPROM.h>
 #include "default_colors.h"
+#include "Wire.h"
 
 
 class Arduino_Alvik{
@@ -27,6 +28,7 @@ class Arduino_Alvik{
 
     HardwareSerial * uart;
 
+    bool verbose_output;
 
     uint8_t b;
     uint8_t code;
@@ -77,6 +79,11 @@ class Arduino_Alvik{
     SemaphoreHandle_t robot_pos_semaphore;
     float robot_pose[3];
 
+    float battery;
+    float battery_soc;
+    uint16_t battery_val = 0;
+    uint8_t battery_v[2];
+
 
 
     void reset_hw();                                                    // reset the robot
@@ -91,9 +98,11 @@ class Arduino_Alvik{
     void set_leds();                                                    // service function to set leds by a byte
     void wait_for_target();                                             // service function that wait for ack
 
-    float limit(float value, const float min, const float max);
-    float normalize(float value, const float min, const float max);
-    void load_color_calibration();
+    float limit(float value, const float min, const float max);         // limit a value
+    float normalize(float value, const float min, const float max);     // normalize a value
+    void load_color_calibration();                                      // service function to get data from eeprom
+
+    float battery_measure();                                            // service function to get data from bms
 
 
 
@@ -154,7 +163,7 @@ class Arduino_Alvik{
 
     Arduino_Alvik();
 
-    int begin();
+    int begin(const bool verbose = true, const uint8_t core = RUN_ON_CORE_0);
     void stop();
     bool is_on();
     void idle();
@@ -182,14 +191,16 @@ class Arduino_Alvik{
     void brake();
     
 
-    void get_line_sensors(int16_t & left, int16_t & center, int16_t & right);
+    void get_line_sensors(int & left, int & center, int & right);
     
-    void get_color_raw(int16_t & red, int16_t & green, int16_t & blue);
+    void get_color_raw(int & red, int & green, int & blue);
     void rgb2norm(const int16_t r, const int16_t g, const int16_t b, float & r_norm, float & g_norm, float & b_norm);
     void norm2hsv(const float r, const float g, const float b, float & h, float & s, float & v);
     void get_color(float & value0, float & value1, float & value2, const uint8_t format = RGB);
-    uint8_t get_color_label(const float h, const float s, const float v);
-    uint8_t get_color_label();
+    uint8_t get_color_id(const float h, const float s, const float v);
+    uint8_t get_color_id();
+    String get_color_label(const float h, const float s, const float v);
+    String get_color_label();
     void color_calibration(const uint8_t background = WHITE);
 
     void get_orientation(float & roll, float & pitch, float & yaw);
@@ -220,6 +231,8 @@ class Arduino_Alvik{
     void set_behaviour(const uint8_t behaviour);
     
     void get_version(uint8_t & upper, uint8_t & middle, uint8_t & lower);
+
+    int get_battery_charge();
 };
 
 

@@ -15,12 +15,19 @@
 
 #include "Arduino.h"
 
+#define RUN_ON_CORE_0 0
+#define RUN_ON_CORE_1 1
+#define NO_VERBOSE 0
+#define VERBOSE 1
+
 #define CHECK_STM32 A6
 #define BOOT_STM32 D2
 #define RESET_STM32 D3
 #define NANO_CHK D4
 #define UART 0
 #define UART_BAUD_RATE 460800
+
+#define CHARGE_THRESHOLD 97
 
 const float WHEEL_DIAMETER_MM = 34.0;
 const float WHEEL_TRACK_MM = 89.0;

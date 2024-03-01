@@ -36,7 +36,7 @@ void setup() {
 }
 
 void loop() {
-  int16_t color[3];
+  int color[3];
   float rgb[3];
   float hsv[3];
   alvik.get_color_raw(color[0], color[1], color[2]);
