@@ -27,6 +27,9 @@
 #define UART 0
 #define UART_BAUD_RATE 460800
 
+#define DL1 left_led
+#define DL2 right_led
+
 #define CHARGE_THRESHOLD 97
 
 const float WHEEL_DIAMETER_MM = 34.0;
