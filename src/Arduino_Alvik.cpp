@@ -431,7 +431,7 @@ bool Arduino_Alvik::is_target_reached(){
 }
 
 void Arduino_Alvik::wait_for_target(const int idle_time){                                             //it is private
-  int start_t = millis();
+  unsigned long start_t = millis();
   
   while (true){
     if (((millis() - start_t) >= idle_time*1000) && is_target_reached()) {
