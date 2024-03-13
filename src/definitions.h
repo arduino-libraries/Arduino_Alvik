@@ -29,11 +29,14 @@
 
 #define CHARGE_THRESHOLD 97
 
+#define NO_ACK 0xFF
+
 const float WHEEL_DIAMETER_MM = 34.0;
 const float WHEEL_TRACK_MM = 89.0;
 const float MOTOR_MAX_RPM = 70.0;
 const float ROBOT_MAX_DEG_S = 6*(2*MOTOR_MAX_RPM*WHEEL_DIAMETER_MM)/WHEEL_TRACK_MM;
-
+const float MOTOR_CONTROL_MM_S = 100.0;
+const float MOTOR_CONTROL_DEG_S = 100.0;
 
 // unit conversion constants
 
