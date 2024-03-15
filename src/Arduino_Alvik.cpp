@@ -132,9 +132,8 @@ int Arduino_Alvik::begin(const bool verbose, const uint8_t core){
 
 
   uart->begin(UART_BAUD_RATE);
-  uart->flush();
 
-  
+
   pinMode(CHECK_STM32, INPUT_PULLDOWN);
   pinMode(RESET_STM32, OUTPUT);
   pinMode(NANO_CHK, OUTPUT);
@@ -150,6 +149,11 @@ int Arduino_Alvik::begin(const bool verbose, const uint8_t core){
 
   delay(100);
   reset_hw();
+
+  uart->flush();
+  while (uart->available()){
+    uart->read();
+  }
 
   wait_for_ack();
 
