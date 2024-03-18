@@ -1,7 +1,7 @@
 # Arduino_Alvik
 Arduino Alvik library, code your Alvik
 
-## Information
+<br> 
 
 To use this library, you need an [Arduino® Alvik](https://store.arduino.cc/pages/alvik) robot.
 
