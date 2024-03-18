@@ -45,6 +45,7 @@ void Arduino_Alvik::reset_hw(){                                                 
 }
 
 void Arduino_Alvik::wait_for_ack(){
+  waiting_ack = 0x00;
   while(last_ack != 0x00){
     delay(20);
   }
@@ -57,6 +58,7 @@ int Arduino_Alvik::begin(const bool verbose, const uint8_t core){
   verbose_output = verbose;
 
   last_ack = 0;
+  waiting_ack = NO_ACK;
 
   version[0] = 0;
   version[1] = 0;
@@ -130,9 +132,8 @@ int Arduino_Alvik::begin(const bool verbose, const uint8_t core){
 
 
   uart->begin(UART_BAUD_RATE);
-  uart->flush();
 
-  
+
   pinMode(CHECK_STM32, INPUT_PULLDOWN);
   pinMode(RESET_STM32, OUTPUT);
   pinMode(NANO_CHK, OUTPUT);
@@ -148,6 +149,11 @@ int Arduino_Alvik::begin(const bool verbose, const uint8_t core){
 
   delay(100);
   reset_hw();
+
+  uart->flush();
+  while (uart->available()){
+    uart->read();
+  }
 
   wait_for_ack();
 
@@ -238,7 +244,12 @@ int Arduino_Alvik::parse_message(){                                             
   switch(code){
     // get ack code
     case 'x':
-      packeter->unpacketC1B(code, last_ack);
+      if (waiting_ack == NO_ACK){
+        packeter->unpacketC1B(code, last_ack);
+        last_ack = 0x00;
+      } else {
+        packeter->unpacketC1B(code, last_ack);
+      }
       break;
 
 
@@ -406,26 +417,44 @@ void Arduino_Alvik::reset_pose(const float x, const float y, const float theta, 
 }
 
 bool Arduino_Alvik::is_target_reached(){
-  if ((last_ack != 'M') && (last_ack != 'R')){
+
+  if (waiting_ack == NO_ACK){
+    return true;
+  }
+
+  if (last_ack != waiting_ack){
     delay(50);
     return false;
   }
   msg_size = packeter->packetC1B('X', 'K');
   uart->write(packeter->msg, msg_size);
+  waiting_ack = NO_ACK;
+  last_ack = 0x00;
   delay(200);
   return true;
 }
 
-void Arduino_Alvik::wait_for_target(){                                             //it is private
-  while (!is_target_reached()){}
+void Arduino_Alvik::wait_for_target(const int idle_time){                                             //it is private
+  unsigned long start_t = millis();
+  
+  while (true){
+    if (((millis() - start_t) >= idle_time*1000) && is_target_reached()) {
+      break;
+    } else
+    {
+      delay(100);
+    }
+    
+  }
 }
 
 void Arduino_Alvik::rotate(const float angle, const uint8_t unit, const bool blocking){
   delay(200);
   msg_size = packeter->packetC1F('R', convert_angle(angle, unit, DEG));
   uart->write(packeter->msg, msg_size);
+  waiting_ack = 'R';
   if (blocking){
-    wait_for_target();
+    wait_for_target(round(angle/MOTOR_CONTROL_DEG_S));
   }
 }
 
@@ -433,8 +462,9 @@ void Arduino_Alvik::move(const float distance, const uint8_t unit, const bool bl
   delay(200);
   msg_size = packeter->packetC1F('G', convert_distance(distance, unit, MM));
   uart->write(packeter->msg, msg_size);
+  waiting_ack = 'M';
   if (blocking){
-    wait_for_target();
+    wait_for_target(round(distance/MOTOR_CONTROL_MM_S));
   }
 }
 

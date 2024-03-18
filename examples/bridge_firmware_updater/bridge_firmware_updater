@@ -15,6 +15,7 @@
   This allows to flash firmware into the Arduino Alvik Carrier via Arduino Nano ESP32.
 
   Please refer to Arduino_AlvikCarrier library available at https://github.com/arduino-libraries/Arduino_AlvikCarrier
+
 */
 
 
@@ -60,9 +61,6 @@ void setup() {
   digitalWrite(RESET_STM32,LOW);
   delay(1000);
   digitalWrite(RESET_STM32,HIGH);
-
-
-
 }
 
 void loop() {

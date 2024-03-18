@@ -36,6 +36,7 @@ class Arduino_Alvik{
     uint8_t msg_size;
 
     uint8_t last_ack;
+    uint8_t waiting_ack;
 
     float converted_angular;
 
@@ -96,7 +97,7 @@ class Arduino_Alvik{
 
     void get_touch();                                                   // service function to parse touch
     void set_leds();                                                    // service function to set leds by a byte
-    void wait_for_target();                                             // service function that wait for ack
+    void wait_for_target(const int idle_time);                                             // service function that wait for ack
 
     float limit(float value, const float min, const float max);         // limit a value
     float normalize(float value, const float min, const float max);     // normalize a value
