@@ -11,7 +11,7 @@ Once the Arduino® Nano ESP32 of the robot is attached to the computer, select `
 
 ## Color Calibration
 
-Flash the sketch into Arduino Nano ESP32 mounted on Alvik and follow the instructions on serial monitor.
+Flash `color_calibration` sketch into Arduino Nano ESP32 mounted on Alvik and follow the instructions on serial monitor.
 
 The white and black values will be written into ESP32 EEPROM. 
 
