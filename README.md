@@ -39,4 +39,4 @@ In particular these settings are needed:
 
 - [arduino-alvik-mpy](https://github.com/arduino/arduino-alvik-mpy), micropython version of the library
 - [Arduino_AlvikCarrier](https://github.com/arduino-libraries/Arduino_AlvikCarrier), arduino library required to build the firmware
-
+- [Product page](https://store.arduino.cc/pages/alvik)
