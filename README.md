@@ -34,9 +34,11 @@ In particular these settings are needed:
 - UART communication with DTR setted to 1 in STM32CubeProgrammer
 - robot must be turned on.
 
+<br>
+<br>
+<br>
 
 ## Useful links
-
-- [arduino-alvik-mpy](https://github.com/arduino/arduino-alvik-mpy), micropython version of the library
-- [Arduino_AlvikCarrier](https://github.com/arduino-libraries/Arduino_AlvikCarrier), arduino library required to build the firmware
-
+- [arduino-alvik-mpy](https://github.com/arduino/arduino-alvik-mpy): MicroPython library required to program Alvik
+- [Arduino_AlvikCarrier](https://github.com/arduino-libraries/Arduino_AlvikCarrier): Arduino library required to build the firmware
+- [Arduino Alvik product page](https://store.arduino.cc/pages/alvik)
