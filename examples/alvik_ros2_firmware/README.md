@@ -1,7 +1,7 @@
 :floppy_disk: `alvik_ros2_firmware`
 ===================================
 
-By compiling and uploading the firmware contained in this repository all Arduino [Alvik](https://store.arduino.cc/products/alvik) internal sensors and actuators can be accessed via default ROS2 topics.
+By compiling and uploading the firmware contained in this repository all Arduino [Alvik](https://store.arduino.cc/products/alvik) internal sensors and actuators can be accessed via default ROS 2 topics.
 
 ### How-to-build/upload
 ```bash
