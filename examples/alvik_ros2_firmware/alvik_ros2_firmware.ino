@@ -21,6 +21,8 @@
 
 #include <geometry_msgs/msg/twist.h>
 
+#include "wifi_secrets.h"
+
 #if !defined(ESP32) && !defined(TARGET_PORTENTA_H7_M7) && !defined(ARDUINO_NANO_RP2040_CONNECT) && !defined(ARDUINO_WIO_TERMINAL)
 #error This example is only available for Arduino Portenta, Arduino Nano RP2040 Connect, ESP32 Dev module and Wio Terminal
 #endif
@@ -72,7 +74,7 @@ void setup() {
   Serial.begin();
   for (auto const start = millis(); !Serial && (millis() - start) < 1000; ) { }
 
-  set_microros_wifi_transports("WIFI-SSID", "WIFI-PASS", "192.168.39.167", 8888);
+  set_microros_wifi_transports(SECRET_WIFI_SSID, SECRET_WIFI_PASS, "192.168.39.167", 8888);
 
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
