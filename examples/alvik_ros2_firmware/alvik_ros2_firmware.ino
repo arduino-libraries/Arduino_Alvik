@@ -7,6 +7,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
+/**************************************************************************************
+ * INCLUDE
+ **************************************************************************************/
+
 #include <Arduino_Alvik.h>
 
 #include <micro_ros_arduino.h>
@@ -25,6 +29,10 @@
 #include "wifi_secrets.h"
 #include "micro_ros_config.h"
 
+/**************************************************************************************
+ * GLOBAL VARIABLES
+ **************************************************************************************/
+
 rcl_subscription_t cmd_vel_sub;
 geometry_msgs__msg__Twist cmd_vel_msg;
 
@@ -38,6 +46,10 @@ rclc_executor_t executor = rclc_executor_get_zero_initialized_executor();
 rcl_node_t node;
 
 Arduino_Alvik alvik;
+
+/**************************************************************************************
+ * LOCAL FUNCTIONS
+ **************************************************************************************/
 
 void error_loop(char const * fmt, ...)
 {
@@ -85,6 +97,10 @@ void odom_timer_callback(rcl_timer_t * timer, int64_t last_call_time)
       error_loop("odom_timer_callback::rcl_publish failed with %d", rc);
   }
 }
+
+/**************************************************************************************
+ * SETUP/LOOP
+ **************************************************************************************/
 
 void setup()
 {
