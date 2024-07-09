@@ -394,12 +394,12 @@ void Arduino_Alvik::get_drive_speed(float & linear, float & angular, const uint8
 
 void Arduino_Alvik::drive(const float linear, const float angular, const uint8_t linear_unit, const uint8_t angular_unit){
   if (angular_unit == PERCENTAGE){
-    converted_angular = (robot_velocity[1]/ROBOT_MAX_DEG_S)*100.0;
+    converted_angular = (angular/ROBOT_MAX_DEG_S)*100.0;
   }
   else{
-    converted_angular = convert_rotational_speed(robot_velocity[1], DEG_S, angular_unit);
-  } 
-  msg_size = packeter->packetC2F('V', convert_speed(linear, linear_unit, MM_S), angular);
+    converted_angular = convert_rotational_speed(angular, angular_unit, DEG_S);
+  }
+  msg_size = packeter->packetC2F('V', convert_speed(linear, linear_unit, MM_S), converted_angular);
   uart->write(packeter->msg, msg_size);
 }
 
