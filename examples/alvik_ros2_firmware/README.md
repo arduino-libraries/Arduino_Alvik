@@ -3,6 +3,9 @@
 
 By compiling and uploading the firmware contained in this repository all Arduino [Alvik](https://store.arduino.cc/products/alvik) internal sensors and actuators can be accessed via default ROS 2 topics.
 
+### How-to-configure
+Edit [`wifi_secrets.h`](wifi_secrets.h) to specify your WiFi configuration and edit [`micro_ros_config.h`](micro_ros_config.h) to specify the Micro-ROS agent's IP and port information.
+
 ### How-to-build/upload
 ```bash
 cd ~/Arduino/libraries
