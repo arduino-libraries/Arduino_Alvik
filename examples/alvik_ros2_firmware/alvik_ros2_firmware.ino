@@ -39,8 +39,19 @@ rcl_node_t node;
 
 Arduino_Alvik alvik;
 
-void error_loop(){
-  while(1){
+void error_loop(char const * fmt, ...)
+{
+  va_list args;
+  va_start(args, fmt);
+
+  char msg[64] = {0};
+  vsnprintf(msg, sizeof(msg), fmt, args);
+  Serial.println(msg);
+
+  va_end(args);
+
+  for(;;)
+  {
     digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
     delay(100);
   }
@@ -70,8 +81,8 @@ void subscription_callback(const void *msgin)
 //  }
 //}
 
-void setup() {
-
+void setup()
+{
   Serial.begin();
   for (auto const start = millis(); !Serial && (millis() - start) < 1000; ) { }
 
@@ -84,26 +95,11 @@ void setup() {
 
   allocator = rcl_get_default_allocator();
 
-  //create init_options
-  rcl_ret_t rc = RCL_RET_OK;
-  rc = rclc_support_init(&support, 0, NULL, &allocator);
-  if (rc != RCL_RET_OK)
-  {
-    char msg[64] = {0};
-    snprintf(msg, sizeof(msg), "rclc_support_init failed with %d", rc);
-    Serial.println(msg);
-    error_loop();
-  }
+  if (rcl_ret_t const rc = rclc_support_init(&support, 0, NULL, &allocator); rc != RCL_RET_OK)
+    error_loop("rclc_support_init failed with %d", rc);
 
-  // create node
-  rc = rclc_node_init_default(&node, "alvik_node", "", &support);
-  if (rc != RCL_RET_OK)
-  {
-    char msg[64] = {0};
-    snprintf(msg, sizeof(msg), "rclc_node_init_default failed with %d", rc);
-    Serial.println(msg);
-    error_loop();
-  }
+  if (rcl_ret_t const rc = rclc_node_init_default(&node, "alvik_node", "", &support); rc != RCL_RET_OK)
+    error_loop("rclc_node_init_default failed with %d", rc);
 
   // create publisher
 //  rc = rclc_publisher_init_best_effort(&publisher, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32), "topic_name");
@@ -115,36 +111,16 @@ void setup() {
 //    error_loop();
 //  }
 
-  rc = rclc_subscription_init_default(&subscriber, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist), "/cmd_vel");
-  if (rc != RCL_RET_OK)
-  {
-    char msg[64] = {0};
-    snprintf(msg, sizeof(msg), "rclc_subscription_init_default failed with %d", rc);
-    Serial.println(msg);
-    error_loop();
-  }
+  if (rcl_ret_t const rc = rclc_subscription_init_default(&subscriber, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist), "/cmd_vel"); rc != RCL_RET_OK)
+    error_loop("rclc_subscription_init_default failed with %d", rc);
 
-  rc = rclc_executor_init(&executor, &support.context, 1, &allocator);
-  if (rc != RCL_RET_OK)
-  {
-    char msg[64] = {0};
-    snprintf(msg, sizeof(msg), "rclc_executor_init failed with %d", rc);
-    Serial.println(msg);
-    error_loop();
-  }
+  if (rcl_ret_t const rc = rclc_executor_init(&executor, &support.context, 1, &allocator); rc != RCL_RET_OK)
+    error_loop("rclc_executor_init failed with %d", rc);
 
-  rc = rclc_executor_add_subscription(&executor, &subscriber, &msg, &subscription_callback, ON_NEW_DATA);
-  if (rc != RCL_RET_OK)
-  {
-    char msg[64] = {0};
-    snprintf(msg, sizeof(msg), "rclc_subscription_init_default failed with %d", rc);
-    Serial.println(msg);
-    error_loop();
-  }
+  if (rcl_ret_t const rc = rclc_executor_add_subscription(&executor, &subscriber, &msg, &subscription_callback, ON_NEW_DATA); rc != RCL_RET_OK)
+    error_loop("rclc_subscription_init_default failed with %d", rc);
 
-//  msg.data = 0;
-
-  Serial.println("Initialisation complete.");
+  Serial.println("alvik_ros2_firmware setup complete.");
 }
 
 void loop()
