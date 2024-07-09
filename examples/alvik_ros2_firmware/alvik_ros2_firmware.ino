@@ -41,9 +41,9 @@ static rcl_publisher_t odom_pub;
 static nav_msgs__msg__Odometry odom_msg;
 
 static rclc_support_t support;
-static rcl_allocator_t allocator;
+static rcl_allocator_t allocator = rcl_get_default_allocator();
 static rclc_executor_t executor = rclc_executor_get_zero_initialized_executor();
-static rcl_node_t node;
+static rcl_node_t node = rcl_get_zero_initialized_node();
 
 static Arduino_Alvik alvik;
 
@@ -113,8 +113,6 @@ void setup()
   digitalWrite(LED_BUILTIN, HIGH);
 
   alvik.begin();
-
-  allocator = rcl_get_default_allocator();
 
   if (rcl_ret_t const rc = rclc_support_init(&support, 0, NULL, &allocator); rc != RCL_RET_OK)
     error_loop("rclc_support_init failed with %d", rc);
