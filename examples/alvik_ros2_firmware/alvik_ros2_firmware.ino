@@ -24,12 +24,8 @@
 #include "wifi_secrets.h"
 #include "micro_ros_config.h"
 
-#if !defined(ESP32) && !defined(TARGET_PORTENTA_H7_M7) && !defined(ARDUINO_NANO_RP2040_CONNECT) && !defined(ARDUINO_WIO_TERMINAL)
-#error This example is only available for Arduino Portenta, Arduino Nano RP2040 Connect, ESP32 Dev module and Wio Terminal
-#endif
-
-rcl_subscription_t subscriber;
-geometry_msgs__msg__Twist msg;
+rcl_subscription_t cmd_vel_sub;
+geometry_msgs__msg__Twist cmd_vel_msg;
 //rcl_publisher_t publisher;
 //std_msgs__msg__Int32 msg;
 rclc_support_t support;
@@ -57,8 +53,7 @@ void error_loop(char const * fmt, ...)
   }
 }
 
-//twist message cb
-void subscription_callback(const void *msgin)
+void cmd_vel_callback(const void *msgin)
 {
   const geometry_msgs__msg__Twist * msg = (const geometry_msgs__msg__Twist *)msgin;
 
@@ -111,14 +106,14 @@ void setup()
 //    error_loop();
 //  }
 
-  if (rcl_ret_t const rc = rclc_subscription_init_default(&subscriber, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist), "/cmd_vel"); rc != RCL_RET_OK)
+  if (rcl_ret_t const rc = rclc_subscription_init_default(&cmd_vel_sub, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist), "/cmd_vel"); rc != RCL_RET_OK)
     error_loop("rclc_subscription_init_default failed with %d", rc);
 
   if (rcl_ret_t const rc = rclc_executor_init(&executor, &support.context, 1, &allocator); rc != RCL_RET_OK)
     error_loop("rclc_executor_init failed with %d", rc);
 
-  if (rcl_ret_t const rc = rclc_executor_add_subscription(&executor, &subscriber, &msg, &subscription_callback, ON_NEW_DATA); rc != RCL_RET_OK)
-    error_loop("rclc_subscription_init_default failed with %d", rc);
+  if (rcl_ret_t const rc = rclc_executor_add_subscription(&executor, &cmd_vel_sub, &cmd_vel_msg, &cmd_vel_callback, ON_NEW_DATA); rc != RCL_RET_OK)
+    error_loop("rclc_executor_add_subscription failed with %d", rc);
 
   Serial.println("alvik_ros2_firmware setup complete.");
 }
