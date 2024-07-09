@@ -72,15 +72,7 @@ void error_loop(char const * fmt, ...)
 void cmd_vel_callback(const void *msgin)
 {
   const geometry_msgs__msg__Twist * msg = (const geometry_msgs__msg__Twist *)msgin;
-
-  char dbg_msg[64] = {0};
-  snprintf(dbg_msg, sizeof(dbg_msg), "linear.x = %.2f", msg->linear.x);
-  Serial.println(dbg_msg);
-
-  float const left_rpm  = msg->linear.x * 100 - msg->angular.z * 50;
-  float const right_rpm = msg->linear.x * 100 + msg->angular.z * 50;
-
-  alvik.set_wheels_speed(left_rpm, right_rpm, RPM);
+  alvik.drive(msg->linear.x, msg->angular.z, M_S, RAD_S);
 }
 
 void odom_timer_callback(rcl_timer_t * timer, int64_t last_call_time)
