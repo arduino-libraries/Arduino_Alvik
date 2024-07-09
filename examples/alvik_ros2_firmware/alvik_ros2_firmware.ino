@@ -33,19 +33,19 @@
  * GLOBAL VARIABLES
  **************************************************************************************/
 
-rcl_subscription_t cmd_vel_sub;
-geometry_msgs__msg__Twist cmd_vel_msg;
+static rcl_subscription_t cmd_vel_sub;
+static geometry_msgs__msg__Twist cmd_vel_msg;
 
-rcl_timer_t odom_timer;
-rcl_publisher_t odom_pub;
-nav_msgs__msg__Odometry odom_msg;
+static rcl_timer_t odom_timer;
+static rcl_publisher_t odom_pub;
+static nav_msgs__msg__Odometry odom_msg;
 
-rclc_support_t support;
-rcl_allocator_t allocator;
-rclc_executor_t executor = rclc_executor_get_zero_initialized_executor();
-rcl_node_t node;
+static rclc_support_t support;
+static rcl_allocator_t allocator;
+static rclc_executor_t executor = rclc_executor_get_zero_initialized_executor();
+static rcl_node_t node;
 
-Arduino_Alvik alvik;
+static Arduino_Alvik alvik;
 
 /**************************************************************************************
  * LOCAL FUNCTIONS
