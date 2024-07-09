@@ -26,8 +26,12 @@
 
 rcl_subscription_t cmd_vel_sub;
 geometry_msgs__msg__Twist cmd_vel_msg;
+
+rcl_timer_t odom_timer;
+
 //rcl_publisher_t publisher;
 //std_msgs__msg__Int32 msg;
+
 rclc_support_t support;
 rcl_allocator_t allocator;
 rclc_executor_t executor;
@@ -67,14 +71,14 @@ void cmd_vel_callback(const void *msgin)
   alvik.set_wheels_speed(left_rpm, right_rpm, RPM);
 }
 
-//void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
-//{
-//  RCLC_UNUSED(last_call_time);
-//  if (timer != NULL) {
-//    RCSOFTCHECK(rcl_publish(&publisher, &msg, NULL));
-//    msg.data++;
-//  }
-//}
+void odom_timer_callback(rcl_timer_t * timer, int64_t last_call_time)
+{
+  RCLC_UNUSED(last_call_time);
+  if (timer != NULL)
+  {
+    Serial.println(millis());
+  }
+}
 
 void setup()
 {
@@ -109,11 +113,17 @@ void setup()
   if (rcl_ret_t const rc = rclc_subscription_init_default(&cmd_vel_sub, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist), "/cmd_vel"); rc != RCL_RET_OK)
     error_loop("rclc_subscription_init_default failed with %d", rc);
 
-  if (rcl_ret_t const rc = rclc_executor_init(&executor, &support.context, 1, &allocator); rc != RCL_RET_OK)
+  if (rcl_ret_t const rc = rclc_timer_init_default(&odom_timer, &support, RCL_MS_TO_NS(10), odom_timer_callback); rc != RCL_RET_OK)
+    error_loop("rclc_timer_init_default failed with %d", rc);
+
+  if (rcl_ret_t const rc = rclc_executor_init(&executor, &support.context, 2, &allocator); rc != RCL_RET_OK)
     error_loop("rclc_executor_init failed with %d", rc);
 
   if (rcl_ret_t const rc = rclc_executor_add_subscription(&executor, &cmd_vel_sub, &cmd_vel_msg, &cmd_vel_callback, ON_NEW_DATA); rc != RCL_RET_OK)
     error_loop("rclc_executor_add_subscription failed with %d", rc);
+
+  if (rcl_ret_t const rc = rclc_executor_add_timer(&executor, &odom_timer); rc != RCL_RET_OK)
+    error_loop("rclc_executor_add_timer failed with %d", rc);
 
   Serial.println("alvik_ros2_firmware setup complete.");
 }
