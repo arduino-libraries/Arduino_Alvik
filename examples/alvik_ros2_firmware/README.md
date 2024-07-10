@@ -8,9 +8,22 @@ Edit [`wifi_secrets.h`](wifi_secrets.h) to specify your WiFi configuration and e
 
 ### How-to-build micro-ROS library for ESP32-S3
 ```bash
-git clone https://github.com/aentinger/micro_ros_arduino
-cd micro_ros_arduino && git checkout esp32s3_support
+git clone https://github.com/micro-ROS/micro_ros_arduino && cd micro_ros_arduino
+```
+* ROS 2 **Jazzy**
+```bash
+git checkout jazzy
+docker run -it --rm -v $(pwd):/project --env MICROROS_LIBRARY_FOLDER=extras microros/micro_ros_static_library_builder:jazzy -p esp32s3
+```
+* ROS 2 **Humble**
+```bash
+git checkout humble
 docker run -it --rm -v $(pwd):/project --env MICROROS_LIBRARY_FOLDER=extras microros/micro_ros_static_library_builder:humble -p esp32s3
+```
+* ROS 2 **Iron**
+```bash
+git checkout iron
+docker run -it --rm -v $(pwd):/project --env MICROROS_LIBRARY_FOLDER=extras microros/micro_ros_static_library_builder:iron -p esp32s3
 ```
 
 ### How-to-build/upload
