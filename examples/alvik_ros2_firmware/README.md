@@ -31,3 +31,14 @@ docker run -it --rm --net=host microros/micro-ros-agent:humble udp4 --port 8888 
 source /opt/ros/humble/setup.bash
 ros2 run teleop_twist_keyboard teleop_twist_keyboard
 ```
+
+#### Interface Documentation
+##### Subscribed Topics
+| Default name | Type |
+|:------------:|:-:|
+|  `/cmd_vel`  | [`geometry_msgs/Twist`](https://docs.ros2.org/galactic/api/geometry_msgs/msg/Twist.html) |
+
+##### Published Topics
+| Default name |                                       Type                                        |
+|:------------:|:---------------------------------------------------------------------------------:|
+|   `/odom`    | [`nav_msgs/Odometry`](https://docs.ros2.org/galactic/api/nav_msgs/msg/Odometry.html) |
