@@ -26,6 +26,8 @@
 #include <nav_msgs/msg/odometry.h>
 #include <geometry_msgs/msg/twist.h>
 
+#include <micro_ros_utilities/string_utilities.h>
+
 #include "wifi_secrets.h"
 #include "micro_ros_config.h"
 
@@ -69,6 +71,22 @@ void error_loop(char const * fmt, ...)
   }
 }
 
+void euler_to_quat(float const x, float const y, float const z, double * q)
+{
+  float c1 = cos((y*3.14f/180.f)/2.f);
+  float c2 = cos((z*3.14f/180.f)/2.f);
+  float c3 = cos((x*3.14f/180.f)/2.f);
+
+  float s1 = sin((y*3.14f/180.f)/2.f);
+  float s2 = sin((z*3.14f/180.f)/2.f);
+  float s3 = sin((x*3.14f/180.f)/2.f);
+
+  q[0] = c1 * c2 * c3 - s1 * s2 * s3;
+  q[1] = s1 * s2 * c3 + c1 * c2 * s3;
+  q[2] = s1 * c2 * c3 + c1 * s2 * s3;
+  q[3] = c1 * s2 * c3 - s1 * c2 * s3;
+}
+
 void cmd_vel_callback(const void *msgin)
 {
   const geometry_msgs__msg__Twist * msg = (const geometry_msgs__msg__Twist *)msgin;
@@ -84,6 +102,29 @@ void odom_timer_callback(rcl_timer_t * timer, int64_t last_call_time)
     clock_gettime(CLOCK_REALTIME, &ts);
     odom_msg.header.stamp.sec = ts.tv_sec;
     odom_msg.header.stamp.nanosec = ts.tv_nsec;
+
+    odom_msg.header.frame_id = micro_ros_string_utilities_init("odom");
+
+    float x = 0.f, y = 0.f, theta = 0.f;
+    alvik.get_pose(x, y, theta, M, RAD);
+
+    odom_msg.pose.pose.position.x  = x;
+    odom_msg.pose.pose.position.y  = y;
+    odom_msg.pose.pose.position.z  = 0.f;
+
+    double q[4] = {0.};
+    euler_to_quat(0., 0., theta, q);
+    odom_msg.pose.pose.orientation.x = q[1];
+    odom_msg.pose.pose.orientation.y = q[2];
+    odom_msg.pose.pose.orientation.z = q[3];
+    odom_msg.pose.pose.orientation.w = q[0];
+
+    float linear = 0.f, angular = 0.f;
+    alvik.get_drive_speed(linear, angular, M_S, RAD_S);
+
+    odom_msg.twist.twist.linear.x  = linear;
+    odom_msg.twist.twist.linear.y  = 0.f;
+    odom_msg.twist.twist.angular.z = angular;
 
     if (rcl_ret_t const rc = rcl_publish(&odom_pub, &odom_msg, NULL); rc != RCL_RET_OK)
       error_loop("odom_timer_callback::rcl_publish failed with %d", rc);
