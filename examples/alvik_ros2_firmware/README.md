@@ -18,3 +18,9 @@ arduino-cli compile --fqbn arduino:esp32:nano_nora  -u -p /dev/ttyACM0
 ```bash
 docker run -it --rm --net=host microros/micro-ros-agent:humble udp4 --port 8888 -v6
 ```
+
+### How-to-teleoperate using keyboard
+```bash
+source /opt/ros/humble/setup.bash
+ros2 run teleop_twist_keyboard teleop_twist_keyboard
+```
