@@ -6,6 +6,13 @@ By compiling and uploading the firmware contained in this repository all Arduino
 ### How-to-configure
 Edit [`wifi_secrets.h`](wifi_secrets.h) to specify your WiFi configuration and edit [`micro_ros_config.h`](micro_ros_config.h) to specify the Micro-ROS agent's IP and port information.
 
+### How-to-build micro-ROS library for ESP32-S3
+```bash
+git clone https://github.com/aentinger/micro_ros_arduino
+cd micro_ros_arduino && git checkout esp32s3_support
+docker run -it --rm -v $(pwd):/project --env MICROROS_LIBRARY_FOLDER=extras microros/micro_ros_static_library_builder:humble -p esp32s3
+```
+
 ### How-to-build/upload
 ```bash
 cd ~/Arduino/libraries
