@@ -35,8 +35,17 @@ arduino-cli compile --fqbn arduino:esp32:nano_nora  -u -p /dev/ttyACM0
 ```
 
 ### How-to-run Micro-ROS local agent
+* ROS 2 **Jazzy**
+```bash
+docker run -it --rm --net=host microros/micro-ros-agent:jazzy udp4 --port 8888 -v6
+```
+* ROS 2 **Humble**
 ```bash
 docker run -it --rm --net=host microros/micro-ros-agent:humble udp4 --port 8888 -v6
+```
+* ROS 2 **Iron**
+```bash
+docker run -it --rm --net=host microros/micro-ros-agent:iron udp4 --port 8888 -v6
 ```
 
 ### How-to-teleoperate using keyboard
