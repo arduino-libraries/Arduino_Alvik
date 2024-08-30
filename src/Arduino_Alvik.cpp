@@ -16,7 +16,7 @@
 
 Arduino_Alvik::Arduino_Alvik(){
   update_semaphore = xSemaphoreCreateMutex();
-  uart = new HardwareSerial(UART);
+  uart = new HardwareSerial(UART); //&Serial0
   packeter = new ucPack(200);
   version_semaphore = xSemaphoreCreateMutex();
   line_semaphore = xSemaphoreCreateMutex();
@@ -35,6 +35,9 @@ Arduino_Alvik::Arduino_Alvik(){
 
   left_wheel = ArduinoAlvikWheel(uart, packeter, 'L', &joints_velocity[0], &joints_position[0]);
   right_wheel = ArduinoAlvikWheel(uart, packeter, 'R', &joints_velocity[1], &joints_position[1]);
+
+  servo_A = ArduinoAlvikServo(uart, packeter, 'A', 0, servo_positions);
+  servo_B = ArduinoAlvikServo(uart, packeter, 'B', 1, servo_positions);
 }
 
 void Arduino_Alvik::reset_hw(){                                                   //it is private
@@ -89,6 +92,9 @@ int Arduino_Alvik::begin(const bool verbose, const uint8_t core){
   black_cal[1] = BLACK_CAL[1];
   black_cal[2] = BLACK_CAL[2];
   */
+
+  servo_positions[0] = 0;
+  servo_positions[1] = 0;
 
   orientation[0] = 0.0;
   orientation[1] = 0.0;
@@ -897,8 +903,15 @@ void Arduino_Alvik::set_illuminator(const bool value){
 }
 
 void Arduino_Alvik::set_servo_positions(const uint8_t a_position, const uint8_t b_position){
+  servo_positions[0] = a_position;
+  servo_positions[1] = b_position;
   msg_size = packeter->packetC2B('S', a_position, b_position);
   uart->write(packeter->msg, msg_size);
+}
+
+void Arduino_Alvik::get_servo_positions(int & a_position, int & b_position){
+  a_position = servo_positions[0];
+  b_position = servo_positions[1];
 }
 
 void Arduino_Alvik::set_behaviour(const uint8_t behaviour){
@@ -1018,6 +1031,29 @@ void Arduino_Alvik::ArduinoAlvikWheel::set_position(const float position, const 
 
 float Arduino_Alvik::ArduinoAlvikWheel::get_position(const uint8_t unit){
   return convert_angle(* _joint_position, DEG, unit);
+}
+
+//-----------------------------------------------------------------------------------------------//
+//                                         servo class                                           //
+//-----------------------------------------------------------------------------------------------//
+
+Arduino_Alvik::ArduinoAlvikServo::ArduinoAlvikServo(HardwareSerial * serial, ucPack * packeter, char label,
+                                                                    uint8_t servo_id, uint8_t * positions){
+  _serial = serial;
+  _packeter = packeter;
+  _label = label;
+  _servo_id = servo_id;
+  _positions = positions;
+}
+
+void Arduino_Alvik::ArduinoAlvikServo::set_position(const uint8_t position){
+  _positions[_servo_id] = position;
+  _msg_size = _packeter->packetC2B('S', _positions[0], _positions[1]);
+  _serial->write(_packeter->msg, _msg_size);
+}
+
+int Arduino_Alvik::ArduinoAlvikServo::get_position(){
+  return _positions[_servo_id];
 }
 
 

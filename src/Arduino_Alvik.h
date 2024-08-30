@@ -56,6 +56,8 @@ class Arduino_Alvik{
     float rgb_normalized[3];
     float hsv[3];
 
+    uint8_t servo_positions[2];
+
     SemaphoreHandle_t orientation_semaphore;
     float orientation[3];
 
@@ -151,12 +153,29 @@ class Arduino_Alvik{
         float get_position(const uint8_t unit = DEG);
     };
 
+    class ArduinoAlvikServo{
+      private:
+        HardwareSerial * _serial;
+        ucPack * _packeter;
+        uint8_t _msg_size;
+        uint8_t _label;
+        uint8_t _servo_id;
+        uint8_t * _positions;
+      public:
+        ArduinoAlvikServo(){};
+        ArduinoAlvikServo(HardwareSerial * serial, ucPack * packeter, char label, uint8_t servo_id, uint8_t * positions);
+        void set_position(const uint8_t position);
+        int get_position();
+    };
+
 
   public:
     Arduino_Alvik::ArduinoAlvikRgbLed left_led;
     Arduino_Alvik::ArduinoAlvikRgbLed right_led;
     Arduino_Alvik::ArduinoAlvikWheel left_wheel;
     Arduino_Alvik::ArduinoAlvikWheel right_wheel;
+    Arduino_Alvik::ArduinoAlvikServo servo_A;
+    Arduino_Alvik::ArduinoAlvikServo servo_B;
     String COLOR_LABELS[13] = {"black", "grey", "light grey", "white",
                         "yellow", "light_green", "green",
                         "light_blue", "blue", "violet",
@@ -228,6 +247,7 @@ class Arduino_Alvik{
     void set_illuminator(const bool value);
 
     void set_servo_positions(const uint8_t a_position, const uint8_t b_position);
+    void get_servo_positions(int & a_position, int & b_position);
 
     void set_behaviour(const uint8_t behaviour);
     
