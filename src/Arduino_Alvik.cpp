@@ -100,6 +100,8 @@ int Arduino_Alvik::begin(const bool verbose, const uint8_t core){
   orientation[1] = 0.0;
   orientation[2] = 0.0;
 
+  move_bits = 0;
+
   imu[0] = 0.0;
   imu[1] = 0.0;
   imu[2] = 0.0;
@@ -294,45 +296,50 @@ int Arduino_Alvik::parse_message(){                                             
 
     // get line follower sensors, low is white - high is black: Left, Center, Right
     case 'l':
-        while (!xSemaphoreTake(line_semaphore, 5)){}
-        packeter->unpacketC3I(code, line_sensors[0], line_sensors[1], line_sensors[2]);
-        xSemaphoreGive(line_semaphore);
-        break;
+      while (!xSemaphoreTake(line_semaphore, 5)){}
+      packeter->unpacketC3I(code, line_sensors[0], line_sensors[1], line_sensors[2]);
+      xSemaphoreGive(line_semaphore);
+      break;
 
     // get colors: red, green, blue
     case 'c':
-        while (!xSemaphoreTake(color_semaphore, 5)){}
-        packeter->unpacketC3I(code, color_sensor[0], color_sensor[1], color_sensor[2]);
-        xSemaphoreGive(color_semaphore);
-        break;
+      while (!xSemaphoreTake(color_semaphore, 5)){}
+      packeter->unpacketC3I(code, color_sensor[0], color_sensor[1], color_sensor[2]);
+      xSemaphoreGive(color_semaphore);
+      break;
     
     // get orientation in deg: roll, pitch, yaw
     case 'q':
-        while (!xSemaphoreTake(orientation_semaphore, 5)){}
-        packeter->unpacketC3F(code, orientation[0], orientation[1], orientation[2]);
-        xSemaphoreGive(orientation_semaphore);
-        break;
+      while (!xSemaphoreTake(orientation_semaphore, 5)){}
+      packeter->unpacketC3F(code, orientation[0], orientation[1], orientation[2]);
+      xSemaphoreGive(orientation_semaphore);
+      break;
+
+    // get tilt and shake
+    case 'm':
+      packeter->unpacketC1B(code, move_bits);
+      break;
 
     // get imu data in g and deg/s: aX, aY, aZ, gX, gY, gZ
     case 'i':
-        while (!xSemaphoreTake(imu_semaphore, 5)){}
-        packeter->unpacketC6F(code, imu[0], imu[1], imu[2], imu[3], imu[4], imu[5]);
-        xSemaphoreGive(imu_semaphore);
-        break;       
+      while (!xSemaphoreTake(imu_semaphore, 5)){}
+      packeter->unpacketC6F(code, imu[0], imu[1], imu[2], imu[3], imu[4], imu[5]);
+      xSemaphoreGive(imu_semaphore);
+      break;       
     
     // get data from ToF in mm: L, CL, C, CR, R, B, T
     case 'f':
-        while (!xSemaphoreTake(distance_semaphore, 5)){}
-        packeter->unpacketC7I(code, distances[0], distances[1], distances[2], distances[3], distances[4], distances[5], distances[6]);
-        xSemaphoreGive(distance_semaphore);
-        break;    
+      while (!xSemaphoreTake(distance_semaphore, 5)){}
+      packeter->unpacketC7I(code, distances[0], distances[1], distances[2], distances[3], distances[4], distances[5], distances[6]);
+      xSemaphoreGive(distance_semaphore);
+      break;    
 
     // get data from touch pads: any, ok, delete, center, left, down, right, up
     case 't':
-        while (!xSemaphoreTake(touch_semaphore, 5)){}
-        packeter->unpacketC1B(code, touch);
-        xSemaphoreGive(touch_semaphore);
-        break;   
+      while (!xSemaphoreTake(touch_semaphore, 5)){}
+      packeter->unpacketC1B(code, touch);
+      xSemaphoreGive(touch_semaphore);
+      break;   
     
     // get version: Up, Mid, Low
     case 0x7E:
@@ -799,6 +806,31 @@ void Arduino_Alvik::get_imu(float & ax, float & ay, float & az, float & gx, floa
   gy = imu[4];
   gz = imu[5];
   xSemaphoreGive(imu_semaphore);
+}
+
+bool Arduino_Alvik::get_shake(){
+  return move_bits & 0b00000001;
+}
+
+String Arduino_Alvik::get_tilt(){
+  if (move_bits & 0b00000100){
+    return "X";
+  }
+  if (move_bits & 0b00001000){
+    return "-X";
+  }
+  if (move_bits & 0b00010000){
+    return "Y";
+  }
+  if (move_bits & 0b00100000){
+    return "-Y";
+  }
+  if (move_bits & 0b01000000){
+    return "Z";
+  }
+  if (move_bits & 0b10000000){
+    return "-Z";
+  }
 }
 
 

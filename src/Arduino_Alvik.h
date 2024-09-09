@@ -60,6 +60,7 @@ class Arduino_Alvik{
 
     SemaphoreHandle_t orientation_semaphore;
     float orientation[3];
+    uint8_t move_bits;
 
     SemaphoreHandle_t imu_semaphore;
     float imu[6];
@@ -227,6 +228,8 @@ class Arduino_Alvik{
     void get_accelerations(float & x, float & y, float & z);
     void get_gyros(float & x, float & y, float & z);
     void get_imu(float & ax, float & ay, float & az, float & gx, float & gy, float & gz);
+    bool get_shake();
+    String get_tilt();
 
     void get_distance(float & left, float & center_left, float & center, float & center_right, float & right, const uint8_t unit = CM);
     float get_distance_top(const uint8_t unit = CM);
