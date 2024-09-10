@@ -137,10 +137,12 @@ class Arduino_Alvik{
         float * _joint_velocity;
         float * _joint_position;
         float converted_vel;
+        Arduino_Alvik * _alvik;
       public:
-        ArduinoAlvikWheel(){};
+        ArduinoAlvikWheel():_alvik(nullptr){};
         ArduinoAlvikWheel(HardwareSerial * serial, ucPack * packeter, uint8_t label, 
-                          float * joint_velocity, float * joint_position, float wheel_diameter = WHEEL_DIAMETER_MM);
+                          float * joint_velocity, float * joint_position, float wheel_diameter,
+                          Arduino_Alvik & alvik);
 
         void reset(const float initial_position = 0.0, const uint8_t unit = DEG);
 
@@ -150,7 +152,7 @@ class Arduino_Alvik{
         void set_speed(const float velocity, const uint8_t unit = RPM);
         float get_speed(const uint8_t unit = RPM);
 
-        void set_position(const float position, const uint8_t unit = DEG);
+        void set_position(const float position, const uint8_t unit = DEG, const bool blocking = true);
         float get_position(const uint8_t unit = DEG);
     };
 

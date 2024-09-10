@@ -33,8 +33,8 @@ Arduino_Alvik::Arduino_Alvik(){
   left_led = ArduinoAlvikRgbLed(uart, packeter, "left_led", &led_state, 2);
   right_led = ArduinoAlvikRgbLed(uart, packeter,"right_led", &led_state, 5);
 
-  left_wheel = ArduinoAlvikWheel(uart, packeter, 'L', &joints_velocity[0], &joints_position[0]);
-  right_wheel = ArduinoAlvikWheel(uart, packeter, 'R', &joints_velocity[1], &joints_position[1]);
+  left_wheel = ArduinoAlvikWheel(uart, packeter, 'L', &joints_velocity[0], &joints_position[0], WHEEL_DIAMETER_MM, *this);
+  right_wheel = ArduinoAlvikWheel(uart, packeter, 'R', &joints_velocity[1], &joints_position[1], WHEEL_DIAMETER_MM, *this);
 
   servo_A = ArduinoAlvikServo(uart, packeter, 'A', 0, servo_positions);
   servo_B = ArduinoAlvikServo(uart, packeter, 'B', 1, servo_positions);
@@ -52,6 +52,7 @@ void Arduino_Alvik::wait_for_ack(){
   while(last_ack != 0x00){
     delay(20);
   }
+  waiting_ack = NO_ACK;
 }
 
 int Arduino_Alvik::begin(const bool verbose, const uint8_t core){  
@@ -60,7 +61,7 @@ int Arduino_Alvik::begin(const bool verbose, const uint8_t core){
 
   verbose_output = verbose;
 
-  last_ack = 0;
+  last_ack = NO_ACK;
   waiting_ack = NO_ACK;
 
   version[0] = 0;
@@ -1016,7 +1017,7 @@ void Arduino_Alvik::ArduinoAlvikRgbLed::set_color(const bool red, const bool gre
 //-----------------------------------------------------------------------------------------------//
 
 Arduino_Alvik::ArduinoAlvikWheel::ArduinoAlvikWheel(HardwareSerial * serial, ucPack * packeter, uint8_t label, 
-                                                    float * joint_velocity, float * joint_position, float wheel_diameter){
+                                                    float * joint_velocity, float * joint_position, float wheel_diameter, Arduino_Alvik & alvik):_alvik(&alvik){
   _serial = serial;
   _packeter = packeter;
   _label = label;
@@ -1057,9 +1058,13 @@ float Arduino_Alvik::ArduinoAlvikWheel::get_speed(const uint8_t unit){
   return convert_rotational_speed(* _joint_velocity, RPM, unit);
 }
 
-void Arduino_Alvik::ArduinoAlvikWheel::set_position(const float position, const uint8_t unit){
+void Arduino_Alvik::ArduinoAlvikWheel::set_position(const float position, const uint8_t unit, const bool blocking){
   _msg_size = _packeter->packetC2B1F('W', _label, 'P', convert_angle(position, unit, DEG));
   _serial->write(_packeter->msg, _msg_size);
+  _alvik->waiting_ack = 'P';
+  if (blocking){
+    _alvik->wait_for_target(position / MOTOR_CONTROL_DEG_S);
+  }
 }
 
 float Arduino_Alvik::ArduinoAlvikWheel::get_position(const uint8_t unit){
