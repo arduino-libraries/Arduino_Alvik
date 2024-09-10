@@ -388,9 +388,13 @@ void Arduino_Alvik::get_wheels_position(float & left, float & right, const uint8
   xSemaphoreGive(joint_pos_semaphore);
 }
 
-void Arduino_Alvik::set_wheels_position(const float left, const float right, const uint8_t unit){
+void Arduino_Alvik::set_wheels_position(const float left, const float right, const uint8_t unit, const bool blocking){
   msg_size = packeter->packetC2F('A', convert_angle(left, unit, DEG), convert_angle(right, unit, DEG));
   uart->write(packeter->msg, msg_size);
+  waiting_ack = 'P';
+  if (blocking){
+    wait_for_target(max(left, right) / MOTOR_CONTROL_DEG_S);
+  }
 }
 
 void Arduino_Alvik::get_drive_speed(float & linear, float & angular, const uint8_t linear_unit, const uint8_t angular_unit){
@@ -430,21 +434,18 @@ void Arduino_Alvik::reset_pose(const float x, const float y, const float theta, 
 }
 
 bool Arduino_Alvik::is_target_reached(){
-
   if (waiting_ack == NO_ACK){
     return true;
   }
-
-  if (last_ack != waiting_ack){
-    delay(50);
-    return false;
+  if (last_ack == waiting_ack){
+    msg_size = packeter->packetC1B('X', 'K');
+    uart->write(packeter->msg, msg_size);
+    waiting_ack = NO_ACK;
+    last_ack = 0x00;
+    delay(100);
+    return true;
   }
-  msg_size = packeter->packetC1B('X', 'K');
-  uart->write(packeter->msg, msg_size);
-  waiting_ack = NO_ACK;
-  last_ack = 0x00;
-  delay(200);
-  return true;
+  return false;
 }
 
 void Arduino_Alvik::wait_for_target(const int idle_time){                                             //it is private
