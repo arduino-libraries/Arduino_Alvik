@@ -42,7 +42,8 @@ class Arduino_Alvik{
 
 
     SemaphoreHandle_t version_semaphore;
-    uint8_t version[3];
+    uint8_t fw_version[3];
+    uint8_t lib_version[3];
 
     uint8_t led_state;
 
@@ -92,7 +93,8 @@ class Arduino_Alvik{
 
     void reset_hw();                                                    // reset the robot
     void wait_for_ack();
-       
+    bool wait_for_fw_check();
+
     bool read_message();                                                // return first available packet
     int parse_message();                                                // robot commands logic
     void update(const int delay_value = 1);                             // thread to update data
@@ -256,7 +258,11 @@ class Arduino_Alvik{
 
     void set_behaviour(const uint8_t behaviour);
     
-    void get_version(uint8_t & upper, uint8_t & middle, uint8_t & lower);
+    void get_version(uint8_t & upper, uint8_t & middle, uint8_t & lower, const String version="fw");
+    void get_fw_version(uint8_t & upper, uint8_t & middle, uint8_t & lower);
+    void get_lib_version(uint8_t & upper, uint8_t & middle, uint8_t & lower);
+    void get_required_fw_version(uint8_t & upper, uint8_t & middle, uint8_t & lower);
+    bool check_firmware_compatibility();
 
     int get_battery_charge();
 };

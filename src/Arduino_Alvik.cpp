@@ -55,6 +55,18 @@ void Arduino_Alvik::wait_for_ack(){
   waiting_ack = NO_ACK;
 }
 
+bool Arduino_Alvik::wait_for_fw_check(){
+  while ((fw_version[0]==0)&&(fw_version[1]==0)&&(fw_version[2]==0)){
+    delay(20);
+  }
+  if (check_firmware_compatibility()){
+    return true;
+  }
+  else{
+    return false;
+  }
+}
+
 int Arduino_Alvik::begin(const bool verbose, const uint8_t core){  
   pinMode(LED_RED, OUTPUT);
   pinMode(LED_GREEN, OUTPUT);
@@ -64,9 +76,9 @@ int Arduino_Alvik::begin(const bool verbose, const uint8_t core){
   last_ack = NO_ACK;
   waiting_ack = NO_ACK;
 
-  version[0] = 0;
-  version[1] = 0;
-  version[2] = 0;
+  fw_version[0] = 0;
+  fw_version[1] = 0;
+  fw_version[2] = 0;
 
   led_state = 0;
 
@@ -165,6 +177,12 @@ int Arduino_Alvik::begin(const bool verbose, const uint8_t core){
   }
 
   wait_for_ack();
+  if (!wait_for_fw_check()){
+    if (verbose_output){
+      Serial.println("\n********** PLEASE UPDATE ALVIK FIRMWARE (required: "+String(REQUIRED_FW_VER_UP)+"."+String(REQUIRED_FW_VER_MID)+"."+String(REQUIRED_FW_VER_LOW)+")! Check documentation **********\n");
+      return -2;
+    }
+  }
 
   set_illuminator(true);
   set_behaviour(BEHAVIOUR_ILLUMINATOR_RISE);
@@ -342,10 +360,10 @@ int Arduino_Alvik::parse_message(){                                             
       xSemaphoreGive(touch_semaphore);
       break;   
     
-    // get version: Up, Mid, Low
+    // get fw_version: Up, Mid, Low
     case 0x7E:
       while (!xSemaphoreTake(version_semaphore, 5)){}
-      packeter->unpacketC3B(code, version[0], version[1], version[2]);
+      packeter->unpacketC3B(code, fw_version[0], fw_version[1], fw_version[2]);
       xSemaphoreGive(version_semaphore);
       break;
 
@@ -953,12 +971,47 @@ void Arduino_Alvik::set_behaviour(const uint8_t behaviour){
   uart->write(packeter->msg, msg_size);
 }
 
-void Arduino_Alvik::get_version(uint8_t & upper, uint8_t & middle, uint8_t & lower){
+void Arduino_Alvik::get_version(uint8_t & upper, uint8_t & middle, uint8_t & lower, String version){
+  if ((version=="fw")||(version=="FW")||(version=="firmware")){
+    get_fw_version(upper,middle,lower);
+  }
+  else{
+    if ((version=="lib")||(version=="LIB")){
+      get_lib_version(upper,middle,lower);
+    }
+    else{
+      upper = 0;
+      middle = 0;
+      lower = 0;
+    }
+  }
+}
+
+void Arduino_Alvik::get_fw_version(uint8_t & upper, uint8_t & middle, uint8_t & lower){
   while (!xSemaphoreTake(version_semaphore, 5)){}
-  upper = version[0];
-  middle = version[1];
-  lower = version[2];
+  upper = fw_version[0];
+  middle = fw_version[1];
+  lower = fw_version[2];
   xSemaphoreGive(version_semaphore);
+}
+
+void Arduino_Alvik::get_lib_version(uint8_t & upper, uint8_t & middle, uint8_t & lower){
+  upper = LIB_VER_UP;
+  middle = LIB_VER_MID;
+  lower = LIB_VER_LOW;
+}
+
+void Arduino_Alvik::get_required_fw_version(uint8_t & upper, uint8_t & middle, uint8_t & lower){
+  upper = REQUIRED_FW_VER_UP;
+  middle = REQUIRED_FW_VER_MID;
+  lower = REQUIRED_FW_VER_LOW;
+}
+
+bool Arduino_Alvik::check_firmware_compatibility(){
+  if ((fw_version[0]==REQUIRED_FW_VER_UP)&&(fw_version[1]==REQUIRED_FW_VER_MID)&&(fw_version[2]==REQUIRED_FW_VER_LOW)){
+    return true;
+  }
+  return false;
 }
 
 
