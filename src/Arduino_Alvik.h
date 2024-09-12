@@ -175,6 +175,7 @@ class Arduino_Alvik{
 
 
   public:
+    TwoWire & i2c;
     Arduino_Alvik::ArduinoAlvikRgbLed left_led;
     Arduino_Alvik::ArduinoAlvikRgbLed right_led;
     Arduino_Alvik::ArduinoAlvikWheel left_wheel;
@@ -226,7 +227,7 @@ class Arduino_Alvik{
     uint8_t get_color_id();
     String get_color_label(const float h, const float s, const float v);
     String get_color_label();
-    void color_calibration(const uint8_t background = WHITE);
+    void color_calibration(const uint8_t background = WHITE_ID);
 
     void get_orientation(float & roll, float & pitch, float & yaw);
     void get_accelerations(float & x, float & y, float & z);

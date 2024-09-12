@@ -50,19 +50,19 @@
 
 
 
-#define BLACK 0
-#define GREY 1
-#define LIGHT_GREY 2
-#define WHITE 3
-#define YELLOW 4
-#define LIGHT_GREEN 5
-#define GREEN 6
-#define LIGHT_BLUE 7
-#define BLUE 8
-#define VIOLET 9
-#define BROWN 10
-#define ORANGE 11
-#define RED 12
+#define BLACK_ID 0
+#define GREY_ID 1
+#define LIGHT_GREY_ID 2
+#define WHITE_ID 3
+#define YELLOW_ID 4
+#define LIGHT_GREEN_ID 5
+#define GREEN_ID 6
+#define LIGHT_BLUE_ID 7
+#define BLUE_ID 8
+#define VIOLET_ID 9
+#define BROWN_ID 10
+#define ORANGE_ID 11
+#define RED_ID 12
 
 
 

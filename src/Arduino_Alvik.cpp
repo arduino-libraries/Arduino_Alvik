@@ -14,7 +14,7 @@
 #include "unit_conversions.h"
 #include "default_colors.h"
 
-Arduino_Alvik::Arduino_Alvik(){
+Arduino_Alvik::Arduino_Alvik():i2c(Wire){
   update_semaphore = xSemaphoreCreateMutex();
   uart = new HardwareSerial(UART); //&Serial0
   packeter = new ucPack(200);
@@ -70,6 +70,8 @@ bool Arduino_Alvik::wait_for_fw_check(){
 int Arduino_Alvik::begin(const bool verbose, const uint8_t core){  
   pinMode(LED_RED, OUTPUT);
   pinMode(LED_GREEN, OUTPUT);
+
+  Wire.begin();
 
   verbose_output = verbose;
 
@@ -207,9 +209,9 @@ void Arduino_Alvik::idle(){
   bool led_value=false;
   while(!is_on()){
     //read battery value
-    battery_measure();
+    battery = battery_measure();
     if (verbose_output){
-      Serial.print(round(battery_soc));
+      Serial.print(round(battery));
       Serial.println("%");
     }
     if (battery_soc>CHARGE_THRESHOLD){
@@ -511,6 +513,7 @@ void Arduino_Alvik::brake(){
 //-----------------------------------------------------------------------------------------------//
 
 float Arduino_Alvik::battery_measure(){                                             //it is private
+  Wire.end();
   pinMode(A4,OUTPUT);
   pinMode(A5,OUTPUT);
   digitalWrite(A4,HIGH);
@@ -532,7 +535,7 @@ float Arduino_Alvik::battery_measure(){                                         
     battery_val = (battery_v[1] << 8) + battery_v[0]; 
     battery_soc = battery_val * 0.00390625;
   }
-  Wire.end();
+  Wire.begin();
   return battery_soc;
 }
 
@@ -656,18 +659,18 @@ void Arduino_Alvik::get_color(float & value0, float & value1, float & value2, co
 uint8_t Arduino_Alvik::get_color_id(const float h, const float s, const float v){
   if (s < MINIMUM_SATURATION){
     if (v < 0.05){
-      return BLACK;
+      return BLACK_ID;
     }
     else{
       if (v < GREY_VALUE){
-        return GREY;
+        return GREY_ID;
       }
       else{
         if (v < LIGHT_GREY_VALUE){
-          return LIGHT_GREY;
+          return LIGHT_GREY_ID;
         }
         else{
-          return WHITE;
+          return WHITE_ID;
         }
       }
     }
@@ -675,38 +678,38 @@ uint8_t Arduino_Alvik::get_color_id(const float h, const float s, const float v)
   else{
     if (v > COLOR_VALUE){
       if ((h >= YELLOW_MIN) && (h < YELLOW_MAX)){
-        return YELLOW;
+        return YELLOW_ID;
       }
       else{
         if ((h >= YELLOW_MAX) && (h < LIGHT_GREEN_MAX)){
-          return LIGHT_GREEN;
+          return LIGHT_GREEN_ID;
         }
         else{
           if ((h >= LIGHT_GREEN_MAX) && (h < GREEN_MAX)){
-            return GREEN;
+            return GREEN_ID;
           }
           else{
             if ((h >= GREEN_MAX) && (h < LIGHT_BLUE_MAX)){
-              return LIGHT_BLUE;
+              return LIGHT_BLUE_ID;
             }
             else{
               if ((h >= LIGHT_BLUE_MAX) && (h < BLUE_MAX)){
-                return BLUE;
+                return BLUE_ID;
               }
               else{
                 if ((h >= BLUE_MAX) && (h < VIOLET_MAX)){
-                  return VIOLET;
+                  return VIOLET_ID;
                 }
                 else{
                   if ((v < BROWN_MAX_VALUE) && (v < BROWN_MAX_SATURATION)){
-                    return BROWN;
+                    return BROWN_ID;
                   }
                   else{
                     if (v > ORANGE_MIN_VALUE){
-                      return ORANGE;
+                      return ORANGE_ID;
                     }
                     else{
-                      return RED;
+                      return RED_ID;
                     }
                   }
                 }
@@ -717,7 +720,7 @@ uint8_t Arduino_Alvik::get_color_id(const float h, const float s, const float v)
       }
     }
     else{
-      return BLACK;
+      return BLACK_ID;
     }
   }
 }
@@ -737,7 +740,7 @@ String Arduino_Alvik::get_color_label(){
 }
 
 void Arduino_Alvik::color_calibration(const uint8_t background){
-  if ((background != BLACK)&&(background != WHITE)){
+  if ((background != BLACK_ID)&&(background != WHITE_ID)){
     return;
   }
   int red_avg = 0;
@@ -758,7 +761,7 @@ void Arduino_Alvik::color_calibration(const uint8_t background){
   blue_avg = blue_avg/float(CALIBRATION_ITERATIONS);
 
   EEPROM.begin(COLOR_SIZE);
-  if (background == WHITE){
+  if (background == WHITE_ID){
     EEPROM.writeUShort(WHITE_OFFSET, (int16_t)red_avg);
     EEPROM.writeUShort(WHITE_OFFSET+2, (int16_t)green_avg);
     EEPROM.writeUShort(WHITE_OFFSET+4, (int16_t)blue_avg);
