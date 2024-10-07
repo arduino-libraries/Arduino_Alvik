@@ -108,8 +108,8 @@ int Arduino_Alvik::begin(const bool verbose, const uint8_t core){
   black_cal[2] = BLACK_CAL[2];
   */
 
-  servo_positions[0] = 0;
-  servo_positions[1] = 0;
+  servo_positions[0] = 90;
+  servo_positions[1] = 90;
 
   orientation[0] = 0.0;
   orientation[1] = 0.0;
