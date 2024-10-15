@@ -88,6 +88,7 @@ class Arduino_Alvik{
     float battery_soc;
     uint16_t battery_val = 0;
     uint8_t battery_v[2];
+    bool battery_is_charging;
 
 
 
@@ -266,6 +267,7 @@ class Arduino_Alvik{
     bool check_firmware_compatibility();
 
     int get_battery_charge();
+    bool is_battery_charging();
 };
 
 

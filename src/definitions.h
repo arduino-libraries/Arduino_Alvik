@@ -19,11 +19,11 @@
 
 #define LIB_VER_UP 1
 #define LIB_VER_MID 0
-#define LIB_VER_LOW 2
+#define LIB_VER_LOW 3
 
 #define REQUIRED_FW_VER_UP  1
 #define REQUIRED_FW_VER_MID 0
-#define REQUIRED_FW_VER_LOW 3
+#define REQUIRED_FW_VER_LOW 4
 
 
 #define RUN_ON_CORE_0 0
@@ -92,6 +92,7 @@ const float ROTATIONAL_SPEED_UNITS[4] = {1.0, 0.16666666666, 9.54929658551, 60.0
 // behaviours
 #define BEHAVIOUR_DISABLED 0
 #define BEHAVIOUR_ILLUMINATOR_RISE 1
+#define BEHAVIOUR_BATTERY_ALERT 2
 
 
 // colors

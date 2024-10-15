@@ -188,6 +188,8 @@ int Arduino_Alvik::begin(const bool verbose, const uint8_t core){
 
   set_illuminator(true);
   set_behaviour(BEHAVIOUR_ILLUMINATOR_RISE);
+  set_behaviour(BEHAVIOUR_BATTERY_ALERT);
+  set_servo_positions(servo_positions[0],servo_positions[1]);
 
   return 0;
 }
@@ -210,6 +212,7 @@ void Arduino_Alvik::idle(){
   while(!is_on()){
     //read battery value
     battery = battery_measure();
+    battery_is_charging = true;
     if (verbose_output){
       Serial.print(round(battery));
       Serial.println("%");
@@ -245,6 +248,7 @@ void Arduino_Alvik::update(const int delay_value){                              
       wait_for_ack();
       set_illuminator(true);
       set_behaviour(BEHAVIOUR_ILLUMINATOR_RISE);
+      set_behaviour(BEHAVIOUR_BATTERY_ALERT);
     }
     if (read_message()){
       parse_message();
@@ -372,6 +376,8 @@ int Arduino_Alvik::parse_message(){                                             
     // get battery parcentage: state of charge
     case 'p':
       packeter->unpacketC1F(code, battery);
+      battery_is_charging = (battery > 0) ? true : false;
+      battery = abs(battery);
       break;
 
     // nothing is parsed, the command is newer to this library
@@ -925,6 +931,10 @@ bool Arduino_Alvik::get_touch_right(){
 
 int Arduino_Alvik::get_battery_charge(){
   return round(battery);
+}
+
+bool Arduino_Alvik::is_battery_charging(){
+  return battery_is_charging;
 }
 
 
