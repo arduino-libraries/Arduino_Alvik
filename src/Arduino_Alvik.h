@@ -42,7 +42,8 @@ class Arduino_Alvik{
 
 
     SemaphoreHandle_t version_semaphore;
-    uint8_t version[3];
+    uint8_t fw_version[3];
+    uint8_t lib_version[3];
 
     uint8_t led_state;
 
@@ -56,8 +57,11 @@ class Arduino_Alvik{
     float rgb_normalized[3];
     float hsv[3];
 
+    uint8_t servo_positions[2];
+
     SemaphoreHandle_t orientation_semaphore;
     float orientation[3];
+    uint8_t move_bits;
 
     SemaphoreHandle_t imu_semaphore;
     float imu[6];
@@ -84,12 +88,14 @@ class Arduino_Alvik{
     float battery_soc;
     uint16_t battery_val = 0;
     uint8_t battery_v[2];
+    bool battery_is_charging;
 
 
 
     void reset_hw();                                                    // reset the robot
     void wait_for_ack();
-       
+    bool wait_for_fw_check();
+
     bool read_message();                                                // return first available packet
     int parse_message();                                                // robot commands logic
     void update(const int delay_value = 1);                             // thread to update data
@@ -134,10 +140,12 @@ class Arduino_Alvik{
         float * _joint_velocity;
         float * _joint_position;
         float converted_vel;
+        Arduino_Alvik * _alvik;
       public:
-        ArduinoAlvikWheel(){};
+        ArduinoAlvikWheel():_alvik(nullptr){};
         ArduinoAlvikWheel(HardwareSerial * serial, ucPack * packeter, uint8_t label, 
-                          float * joint_velocity, float * joint_position, float wheel_diameter = WHEEL_DIAMETER_MM);
+                          float * joint_velocity, float * joint_position, float wheel_diameter,
+                          Arduino_Alvik & alvik);
 
         void reset(const float initial_position = 0.0, const uint8_t unit = DEG);
 
@@ -147,16 +155,34 @@ class Arduino_Alvik{
         void set_speed(const float velocity, const uint8_t unit = RPM);
         float get_speed(const uint8_t unit = RPM);
 
-        void set_position(const float position, const uint8_t unit = DEG);
+        void set_position(const float position, const uint8_t unit = DEG, const bool blocking = true);
         float get_position(const uint8_t unit = DEG);
+    };
+
+    class ArduinoAlvikServo{
+      private:
+        HardwareSerial * _serial;
+        ucPack * _packeter;
+        uint8_t _msg_size;
+        uint8_t _label;
+        uint8_t _servo_id;
+        uint8_t * _positions;
+      public:
+        ArduinoAlvikServo(){};
+        ArduinoAlvikServo(HardwareSerial * serial, ucPack * packeter, char label, uint8_t servo_id, uint8_t * positions);
+        void set_position(const uint8_t position);
+        int get_position();
     };
 
 
   public:
+    TwoWire & i2c;
     Arduino_Alvik::ArduinoAlvikRgbLed left_led;
     Arduino_Alvik::ArduinoAlvikRgbLed right_led;
     Arduino_Alvik::ArduinoAlvikWheel left_wheel;
     Arduino_Alvik::ArduinoAlvikWheel right_wheel;
+    Arduino_Alvik::ArduinoAlvikServo servo_A;
+    Arduino_Alvik::ArduinoAlvikServo servo_B;
     String COLOR_LABELS[13] = {"black", "grey", "light grey", "white",
                         "yellow", "light_green", "green",
                         "light_blue", "blue", "violet",
@@ -177,7 +203,7 @@ class Arduino_Alvik{
     void set_wheels_speed(const float left, const float right, const uint8_t unit = RPM);
 
     void get_wheels_position(float & left, float & right, const uint8_t unit = DEG);
-    void set_wheels_position(const float left, const float right, const uint8_t unit = DEG);
+    void set_wheels_position(const float left, const float right, const uint8_t unit = DEG, const bool blocking = true);
 
     void get_drive_speed(float & linear, float & angular, const uint8_t linear_unit = CM_S, const uint8_t angular_unit = DEG_S);
     void drive(const float linear, const float angular, const uint8_t linear_unit = CM_S, const uint8_t angular_unit = DEG_S);
@@ -202,12 +228,14 @@ class Arduino_Alvik{
     uint8_t get_color_id();
     String get_color_label(const float h, const float s, const float v);
     String get_color_label();
-    void color_calibration(const uint8_t background = WHITE);
+    void color_calibration(const uint8_t background = WHITE_ID);
 
     void get_orientation(float & roll, float & pitch, float & yaw);
     void get_accelerations(float & x, float & y, float & z);
     void get_gyros(float & x, float & y, float & z);
     void get_imu(float & ax, float & ay, float & az, float & gx, float & gy, float & gz);
+    bool get_shake();
+    String get_tilt();
 
     void get_distance(float & left, float & center_left, float & center, float & center_right, float & right, const uint8_t unit = CM);
     float get_distance_top(const uint8_t unit = CM);
@@ -228,12 +256,18 @@ class Arduino_Alvik{
     void set_illuminator(const bool value);
 
     void set_servo_positions(const uint8_t a_position, const uint8_t b_position);
+    void get_servo_positions(int & a_position, int & b_position);
 
     void set_behaviour(const uint8_t behaviour);
     
-    void get_version(uint8_t & upper, uint8_t & middle, uint8_t & lower);
+    void get_version(uint8_t & upper, uint8_t & middle, uint8_t & lower, const String version="fw");
+    void get_fw_version(uint8_t & upper, uint8_t & middle, uint8_t & lower);
+    void get_lib_version(uint8_t & upper, uint8_t & middle, uint8_t & lower);
+    void get_required_fw_version(uint8_t & upper, uint8_t & middle, uint8_t & lower);
+    bool check_firmware_compatibility();
 
     int get_battery_charge();
+    bool is_battery_charging();
 };
 
 

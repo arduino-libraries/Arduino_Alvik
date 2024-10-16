@@ -15,6 +15,17 @@
 
 #include "Arduino.h"
 
+
+
+#define LIB_VER_UP 1
+#define LIB_VER_MID 1
+#define LIB_VER_LOW 0
+
+#define REQUIRED_FW_VER_UP  1
+#define REQUIRED_FW_VER_MID 1
+#define REQUIRED_FW_VER_LOW 0
+
+
 #define RUN_ON_CORE_0 0
 #define RUN_ON_CORE_1 1
 #define NO_VERBOSE 0
@@ -81,6 +92,7 @@ const float ROTATIONAL_SPEED_UNITS[4] = {1.0, 0.16666666666, 9.54929658551, 60.0
 // behaviours
 #define BEHAVIOUR_DISABLED 0
 #define BEHAVIOUR_ILLUMINATOR_RISE 1
+#define BEHAVIOUR_BATTERY_ALERT 2
 
 
 // colors

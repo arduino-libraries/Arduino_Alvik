@@ -14,9 +14,9 @@
 #include "unit_conversions.h"
 #include "default_colors.h"
 
-Arduino_Alvik::Arduino_Alvik(){
+Arduino_Alvik::Arduino_Alvik():i2c(Wire){
   update_semaphore = xSemaphoreCreateMutex();
-  uart = new HardwareSerial(UART);
+  uart = new HardwareSerial(UART); //&Serial0
   packeter = new ucPack(200);
   version_semaphore = xSemaphoreCreateMutex();
   line_semaphore = xSemaphoreCreateMutex();
@@ -33,8 +33,11 @@ Arduino_Alvik::Arduino_Alvik(){
   left_led = ArduinoAlvikRgbLed(uart, packeter, "left_led", &led_state, 2);
   right_led = ArduinoAlvikRgbLed(uart, packeter,"right_led", &led_state, 5);
 
-  left_wheel = ArduinoAlvikWheel(uart, packeter, 'L', &joints_velocity[0], &joints_position[0]);
-  right_wheel = ArduinoAlvikWheel(uart, packeter, 'R', &joints_velocity[1], &joints_position[1]);
+  left_wheel = ArduinoAlvikWheel(uart, packeter, 'L', &joints_velocity[0], &joints_position[0], WHEEL_DIAMETER_MM, *this);
+  right_wheel = ArduinoAlvikWheel(uart, packeter, 'R', &joints_velocity[1], &joints_position[1], WHEEL_DIAMETER_MM, *this);
+
+  servo_A = ArduinoAlvikServo(uart, packeter, 'A', 0, servo_positions);
+  servo_B = ArduinoAlvikServo(uart, packeter, 'B', 1, servo_positions);
 }
 
 void Arduino_Alvik::reset_hw(){                                                   //it is private
@@ -49,20 +52,35 @@ void Arduino_Alvik::wait_for_ack(){
   while(last_ack != 0x00){
     delay(20);
   }
+  waiting_ack = NO_ACK;
+}
+
+bool Arduino_Alvik::wait_for_fw_check(){
+  while ((fw_version[0]==0)&&(fw_version[1]==0)&&(fw_version[2]==0)){
+    delay(20);
+  }
+  if (check_firmware_compatibility()){
+    return true;
+  }
+  else{
+    return false;
+  }
 }
 
 int Arduino_Alvik::begin(const bool verbose, const uint8_t core){  
   pinMode(LED_RED, OUTPUT);
   pinMode(LED_GREEN, OUTPUT);
 
+  Wire.begin();
+
   verbose_output = verbose;
 
-  last_ack = 0;
+  last_ack = NO_ACK;
   waiting_ack = NO_ACK;
 
-  version[0] = 0;
-  version[1] = 0;
-  version[2] = 0;
+  fw_version[0] = 0;
+  fw_version[1] = 0;
+  fw_version[2] = 0;
 
   led_state = 0;
 
@@ -90,9 +108,14 @@ int Arduino_Alvik::begin(const bool verbose, const uint8_t core){
   black_cal[2] = BLACK_CAL[2];
   */
 
+  servo_positions[0] = 90;
+  servo_positions[1] = 90;
+
   orientation[0] = 0.0;
   orientation[1] = 0.0;
   orientation[2] = 0.0;
+
+  move_bits = 0;
 
   imu[0] = 0.0;
   imu[1] = 0.0;
@@ -127,7 +150,7 @@ int Arduino_Alvik::begin(const bool verbose, const uint8_t core){
 
   battery = 0.0;
   battery_soc = 0.0;
-
+  battery_is_charging = false;
 
 
 
@@ -156,9 +179,17 @@ int Arduino_Alvik::begin(const bool verbose, const uint8_t core){
   }
 
   wait_for_ack();
+  if (!wait_for_fw_check()){
+    if (verbose_output){
+      Serial.println("\n********** PLEASE UPDATE ALVIK FIRMWARE (required: "+String(REQUIRED_FW_VER_UP)+"."+String(REQUIRED_FW_VER_MID)+"."+String(REQUIRED_FW_VER_LOW)+")! Check documentation **********\n");
+      return -2;
+    }
+  }
 
   set_illuminator(true);
   set_behaviour(BEHAVIOUR_ILLUMINATOR_RISE);
+  set_behaviour(BEHAVIOUR_BATTERY_ALERT);
+  set_servo_positions(servo_positions[0],servo_positions[1]);
 
   return 0;
 }
@@ -180,9 +211,10 @@ void Arduino_Alvik::idle(){
   bool led_value=false;
   while(!is_on()){
     //read battery value
-    battery_measure();
+    battery = battery_measure();
+    battery_is_charging = true;
     if (verbose_output){
-      Serial.print(round(battery_soc));
+      Serial.print(round(battery));
       Serial.println("%");
     }
     if (battery_soc>CHARGE_THRESHOLD){
@@ -216,6 +248,7 @@ void Arduino_Alvik::update(const int delay_value){                              
       wait_for_ack();
       set_illuminator(true);
       set_behaviour(BEHAVIOUR_ILLUMINATOR_RISE);
+      set_behaviour(BEHAVIOUR_BATTERY_ALERT);
     }
     if (read_message()){
       parse_message();
@@ -288,56 +321,63 @@ int Arduino_Alvik::parse_message(){                                             
 
     // get line follower sensors, low is white - high is black: Left, Center, Right
     case 'l':
-        while (!xSemaphoreTake(line_semaphore, 5)){}
-        packeter->unpacketC3I(code, line_sensors[0], line_sensors[1], line_sensors[2]);
-        xSemaphoreGive(line_semaphore);
-        break;
+      while (!xSemaphoreTake(line_semaphore, 5)){}
+      packeter->unpacketC3I(code, line_sensors[0], line_sensors[1], line_sensors[2]);
+      xSemaphoreGive(line_semaphore);
+      break;
 
     // get colors: red, green, blue
     case 'c':
-        while (!xSemaphoreTake(color_semaphore, 5)){}
-        packeter->unpacketC3I(code, color_sensor[0], color_sensor[1], color_sensor[2]);
-        xSemaphoreGive(color_semaphore);
-        break;
+      while (!xSemaphoreTake(color_semaphore, 5)){}
+      packeter->unpacketC3I(code, color_sensor[0], color_sensor[1], color_sensor[2]);
+      xSemaphoreGive(color_semaphore);
+      break;
     
     // get orientation in deg: roll, pitch, yaw
     case 'q':
-        while (!xSemaphoreTake(orientation_semaphore, 5)){}
-        packeter->unpacketC3F(code, orientation[0], orientation[1], orientation[2]);
-        xSemaphoreGive(orientation_semaphore);
-        break;
+      while (!xSemaphoreTake(orientation_semaphore, 5)){}
+      packeter->unpacketC3F(code, orientation[0], orientation[1], orientation[2]);
+      xSemaphoreGive(orientation_semaphore);
+      break;
+
+    // get tilt and shake
+    case 'm':
+      packeter->unpacketC1B(code, move_bits);
+      break;
 
     // get imu data in g and deg/s: aX, aY, aZ, gX, gY, gZ
     case 'i':
-        while (!xSemaphoreTake(imu_semaphore, 5)){}
-        packeter->unpacketC6F(code, imu[0], imu[1], imu[2], imu[3], imu[4], imu[5]);
-        xSemaphoreGive(imu_semaphore);
-        break;       
+      while (!xSemaphoreTake(imu_semaphore, 5)){}
+      packeter->unpacketC6F(code, imu[0], imu[1], imu[2], imu[3], imu[4], imu[5]);
+      xSemaphoreGive(imu_semaphore);
+      break;       
     
     // get data from ToF in mm: L, CL, C, CR, R, B, T
     case 'f':
-        while (!xSemaphoreTake(distance_semaphore, 5)){}
-        packeter->unpacketC7I(code, distances[0], distances[1], distances[2], distances[3], distances[4], distances[5], distances[6]);
-        xSemaphoreGive(distance_semaphore);
-        break;    
+      while (!xSemaphoreTake(distance_semaphore, 5)){}
+      packeter->unpacketC7I(code, distances[0], distances[1], distances[2], distances[3], distances[4], distances[5], distances[6]);
+      xSemaphoreGive(distance_semaphore);
+      break;    
 
     // get data from touch pads: any, ok, delete, center, left, down, right, up
     case 't':
-        while (!xSemaphoreTake(touch_semaphore, 5)){}
-        packeter->unpacketC1B(code, touch);
-        xSemaphoreGive(touch_semaphore);
-        break;   
+      while (!xSemaphoreTake(touch_semaphore, 5)){}
+      packeter->unpacketC1B(code, touch);
+      xSemaphoreGive(touch_semaphore);
+      break;   
     
-    // get version: Up, Mid, Low
+    // get fw_version: Up, Mid, Low
     case 0x7E:
       while (!xSemaphoreTake(version_semaphore, 5)){}
-      packeter->unpacketC3B(code, version[0], version[1], version[2]);
+      packeter->unpacketC3B(code, fw_version[0], fw_version[1], fw_version[2]);
       xSemaphoreGive(version_semaphore);
       break;
 
     // get battery parcentage: state of charge
     case 'p':
       packeter->unpacketC1F(code, battery);
+      battery_is_charging = (battery > 0) ? true : false;
+      battery = abs(battery);
       break;
 
     // nothing is parsed, the command is newer to this library
@@ -375,9 +415,13 @@ void Arduino_Alvik::get_wheels_position(float & left, float & right, const uint8
   xSemaphoreGive(joint_pos_semaphore);
 }
 
-void Arduino_Alvik::set_wheels_position(const float left, const float right, const uint8_t unit){
+void Arduino_Alvik::set_wheels_position(const float left, const float right, const uint8_t unit, const bool blocking){
   msg_size = packeter->packetC2F('A', convert_angle(left, unit, DEG), convert_angle(right, unit, DEG));
   uart->write(packeter->msg, msg_size);
+  waiting_ack = 'P';
+  if (blocking){
+    wait_for_target(max(left, right) / MOTOR_CONTROL_DEG_S);
+  }
 }
 
 void Arduino_Alvik::get_drive_speed(float & linear, float & angular, const uint8_t linear_unit, const uint8_t angular_unit){
@@ -417,21 +461,18 @@ void Arduino_Alvik::reset_pose(const float x, const float y, const float theta, 
 }
 
 bool Arduino_Alvik::is_target_reached(){
-
   if (waiting_ack == NO_ACK){
     return true;
   }
-
-  if (last_ack != waiting_ack){
-    delay(50);
-    return false;
+  if (last_ack == waiting_ack){
+    msg_size = packeter->packetC1B('X', 'K');
+    uart->write(packeter->msg, msg_size);
+    waiting_ack = NO_ACK;
+    last_ack = 0x00;
+    delay(100);
+    return true;
   }
-  msg_size = packeter->packetC1B('X', 'K');
-  uart->write(packeter->msg, msg_size);
-  waiting_ack = NO_ACK;
-  last_ack = 0x00;
-  delay(200);
-  return true;
+  return false;
 }
 
 void Arduino_Alvik::wait_for_target(const int idle_time){                                             //it is private
@@ -478,6 +519,7 @@ void Arduino_Alvik::brake(){
 //-----------------------------------------------------------------------------------------------//
 
 float Arduino_Alvik::battery_measure(){                                             //it is private
+  Wire.end();
   pinMode(A4,OUTPUT);
   pinMode(A5,OUTPUT);
   digitalWrite(A4,HIGH);
@@ -499,7 +541,7 @@ float Arduino_Alvik::battery_measure(){                                         
     battery_val = (battery_v[1] << 8) + battery_v[0]; 
     battery_soc = battery_val * 0.00390625;
   }
-  Wire.end();
+  Wire.begin();
   return battery_soc;
 }
 
@@ -623,18 +665,18 @@ void Arduino_Alvik::get_color(float & value0, float & value1, float & value2, co
 uint8_t Arduino_Alvik::get_color_id(const float h, const float s, const float v){
   if (s < MINIMUM_SATURATION){
     if (v < 0.05){
-      return BLACK;
+      return BLACK_ID;
     }
     else{
       if (v < GREY_VALUE){
-        return GREY;
+        return GREY_ID;
       }
       else{
         if (v < LIGHT_GREY_VALUE){
-          return LIGHT_GREY;
+          return LIGHT_GREY_ID;
         }
         else{
-          return WHITE;
+          return WHITE_ID;
         }
       }
     }
@@ -642,38 +684,38 @@ uint8_t Arduino_Alvik::get_color_id(const float h, const float s, const float v)
   else{
     if (v > COLOR_VALUE){
       if ((h >= YELLOW_MIN) && (h < YELLOW_MAX)){
-        return YELLOW;
+        return YELLOW_ID;
       }
       else{
         if ((h >= YELLOW_MAX) && (h < LIGHT_GREEN_MAX)){
-          return LIGHT_GREEN;
+          return LIGHT_GREEN_ID;
         }
         else{
           if ((h >= LIGHT_GREEN_MAX) && (h < GREEN_MAX)){
-            return GREEN;
+            return GREEN_ID;
           }
           else{
             if ((h >= GREEN_MAX) && (h < LIGHT_BLUE_MAX)){
-              return LIGHT_BLUE;
+              return LIGHT_BLUE_ID;
             }
             else{
               if ((h >= LIGHT_BLUE_MAX) && (h < BLUE_MAX)){
-                return BLUE;
+                return BLUE_ID;
               }
               else{
                 if ((h >= BLUE_MAX) && (h < VIOLET_MAX)){
-                  return VIOLET;
+                  return VIOLET_ID;
                 }
                 else{
                   if ((v < BROWN_MAX_VALUE) && (v < BROWN_MAX_SATURATION)){
-                    return BROWN;
+                    return BROWN_ID;
                   }
                   else{
                     if (v > ORANGE_MIN_VALUE){
-                      return ORANGE;
+                      return ORANGE_ID;
                     }
                     else{
-                      return RED;
+                      return RED_ID;
                     }
                   }
                 }
@@ -684,7 +726,7 @@ uint8_t Arduino_Alvik::get_color_id(const float h, const float s, const float v)
       }
     }
     else{
-      return BLACK;
+      return BLACK_ID;
     }
   }
 }
@@ -704,7 +746,7 @@ String Arduino_Alvik::get_color_label(){
 }
 
 void Arduino_Alvik::color_calibration(const uint8_t background){
-  if ((background != BLACK)&&(background != WHITE)){
+  if ((background != BLACK_ID)&&(background != WHITE_ID)){
     return;
   }
   int red_avg = 0;
@@ -725,7 +767,7 @@ void Arduino_Alvik::color_calibration(const uint8_t background){
   blue_avg = blue_avg/float(CALIBRATION_ITERATIONS);
 
   EEPROM.begin(COLOR_SIZE);
-  if (background == WHITE){
+  if (background == WHITE_ID){
     EEPROM.writeUShort(WHITE_OFFSET, (int16_t)red_avg);
     EEPROM.writeUShort(WHITE_OFFSET+2, (int16_t)green_avg);
     EEPROM.writeUShort(WHITE_OFFSET+4, (int16_t)blue_avg);
@@ -793,6 +835,31 @@ void Arduino_Alvik::get_imu(float & ax, float & ay, float & az, float & gx, floa
   gy = imu[4];
   gz = imu[5];
   xSemaphoreGive(imu_semaphore);
+}
+
+bool Arduino_Alvik::get_shake(){
+  return move_bits & 0b00000001;
+}
+
+String Arduino_Alvik::get_tilt(){
+  if (move_bits & 0b00000100){
+    return "X";
+  }
+  if (move_bits & 0b00001000){
+    return "-X";
+  }
+  if (move_bits & 0b00010000){
+    return "Y";
+  }
+  if (move_bits & 0b00100000){
+    return "-Y";
+  }
+  if (move_bits & 0b01000000){
+    return "Z";
+  }
+  if (move_bits & 0b10000000){
+    return "-Z";
+  }
 }
 
 
@@ -866,6 +933,10 @@ int Arduino_Alvik::get_battery_charge(){
   return round(battery);
 }
 
+bool Arduino_Alvik::is_battery_charging(){
+  return battery_is_charging;
+}
+
 
 //-----------------------------------------------------------------------------------------------//
 //                                   leds and peripherials                                       //
@@ -897,8 +968,15 @@ void Arduino_Alvik::set_illuminator(const bool value){
 }
 
 void Arduino_Alvik::set_servo_positions(const uint8_t a_position, const uint8_t b_position){
+  servo_positions[0] = a_position;
+  servo_positions[1] = b_position;
   msg_size = packeter->packetC2B('S', a_position, b_position);
   uart->write(packeter->msg, msg_size);
+}
+
+void Arduino_Alvik::get_servo_positions(int & a_position, int & b_position){
+  a_position = servo_positions[0];
+  b_position = servo_positions[1];
 }
 
 void Arduino_Alvik::set_behaviour(const uint8_t behaviour){
@@ -906,12 +984,47 @@ void Arduino_Alvik::set_behaviour(const uint8_t behaviour){
   uart->write(packeter->msg, msg_size);
 }
 
-void Arduino_Alvik::get_version(uint8_t & upper, uint8_t & middle, uint8_t & lower){
+void Arduino_Alvik::get_version(uint8_t & upper, uint8_t & middle, uint8_t & lower, String version){
+  if ((version=="fw")||(version=="FW")||(version=="firmware")){
+    get_fw_version(upper,middle,lower);
+  }
+  else{
+    if ((version=="lib")||(version=="LIB")){
+      get_lib_version(upper,middle,lower);
+    }
+    else{
+      upper = 0;
+      middle = 0;
+      lower = 0;
+    }
+  }
+}
+
+void Arduino_Alvik::get_fw_version(uint8_t & upper, uint8_t & middle, uint8_t & lower){
   while (!xSemaphoreTake(version_semaphore, 5)){}
-  upper = version[0];
-  middle = version[1];
-  lower = version[2];
+  upper = fw_version[0];
+  middle = fw_version[1];
+  lower = fw_version[2];
   xSemaphoreGive(version_semaphore);
+}
+
+void Arduino_Alvik::get_lib_version(uint8_t & upper, uint8_t & middle, uint8_t & lower){
+  upper = LIB_VER_UP;
+  middle = LIB_VER_MID;
+  lower = LIB_VER_LOW;
+}
+
+void Arduino_Alvik::get_required_fw_version(uint8_t & upper, uint8_t & middle, uint8_t & lower){
+  upper = REQUIRED_FW_VER_UP;
+  middle = REQUIRED_FW_VER_MID;
+  lower = REQUIRED_FW_VER_LOW;
+}
+
+bool Arduino_Alvik::check_firmware_compatibility(){
+  if ((fw_version[0]==REQUIRED_FW_VER_UP)&&(fw_version[1]==REQUIRED_FW_VER_MID)&&(fw_version[2]==REQUIRED_FW_VER_LOW)){
+    return true;
+  }
+  return false;
 }
 
 
@@ -970,7 +1083,7 @@ void Arduino_Alvik::ArduinoAlvikRgbLed::set_color(const bool red, const bool gre
 //-----------------------------------------------------------------------------------------------//
 
 Arduino_Alvik::ArduinoAlvikWheel::ArduinoAlvikWheel(HardwareSerial * serial, ucPack * packeter, uint8_t label, 
-                                                    float * joint_velocity, float * joint_position, float wheel_diameter){
+                                                    float * joint_velocity, float * joint_position, float wheel_diameter, Arduino_Alvik & alvik):_alvik(&alvik){
   _serial = serial;
   _packeter = packeter;
   _label = label;
@@ -1011,13 +1124,40 @@ float Arduino_Alvik::ArduinoAlvikWheel::get_speed(const uint8_t unit){
   return convert_rotational_speed(* _joint_velocity, RPM, unit);
 }
 
-void Arduino_Alvik::ArduinoAlvikWheel::set_position(const float position, const uint8_t unit){
+void Arduino_Alvik::ArduinoAlvikWheel::set_position(const float position, const uint8_t unit, const bool blocking){
   _msg_size = _packeter->packetC2B1F('W', _label, 'P', convert_angle(position, unit, DEG));
   _serial->write(_packeter->msg, _msg_size);
+  _alvik->waiting_ack = 'P';
+  if (blocking){
+    _alvik->wait_for_target(position / MOTOR_CONTROL_DEG_S);
+  }
 }
 
 float Arduino_Alvik::ArduinoAlvikWheel::get_position(const uint8_t unit){
   return convert_angle(* _joint_position, DEG, unit);
+}
+
+//-----------------------------------------------------------------------------------------------//
+//                                         servo class                                           //
+//-----------------------------------------------------------------------------------------------//
+
+Arduino_Alvik::ArduinoAlvikServo::ArduinoAlvikServo(HardwareSerial * serial, ucPack * packeter, char label,
+                                                                    uint8_t servo_id, uint8_t * positions){
+  _serial = serial;
+  _packeter = packeter;
+  _label = label;
+  _servo_id = servo_id;
+  _positions = positions;
+}
+
+void Arduino_Alvik::ArduinoAlvikServo::set_position(const uint8_t position){
+  _positions[_servo_id] = position;
+  _msg_size = _packeter->packetC2B('S', _positions[0], _positions[1]);
+  _serial->write(_packeter->msg, _msg_size);
+}
+
+int Arduino_Alvik::ArduinoAlvikServo::get_position(){
+  return _positions[_servo_id];
 }
 
 
