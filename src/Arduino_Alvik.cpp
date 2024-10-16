@@ -150,7 +150,7 @@ int Arduino_Alvik::begin(const bool verbose, const uint8_t core){
 
   battery = 0.0;
   battery_soc = 0.0;
-
+  battery_is_charging = false;
 
 
 
