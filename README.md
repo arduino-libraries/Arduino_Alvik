@@ -22,21 +22,19 @@ The white and black values will be written into ESP32 EEPROM.
 Since this [issue](https://github.com/stm32duino/Arduino_Core_STM32/issues/2292), Arduino® Alvik Carrier is not integrated yet into STM32duino's boards.
 
 <br>
-
 At the moment, it is possible to:
-- flash `bridge_firmware_updater` example into Arduino Nano ESP32 mounted on Alvik
-- use [STM32CubeProgrammer](https://www.st.com/en/development-tools/stm32cubeprog.html) to flash the new firmware.
+
+- Open the **Bridge** example in the Arduino IDE by going to **File > Examples > Arduino_Alvik > bridge_firmware_updater**. (For this, the board's [firmware must be reset](https://support.arduino.cc/hc/en-us/articles/9810414060188-Reset-the-Arduino-bootloader-on-the-Nano-ESP32) to work in the Arduino IDE.)
+![Bridge Firmware Updater](assets/bridgeFirmware.png)
+- Open [STM32 Cube Programmer](https://www.st.com/en/development-tools/stm32cubeprog.html).
+- Set the connection to **UART** mode, the **Port** to whichever port the board is connected to, and **DTR** to HIGH. You can now press **Connect**. Make sure the robot is ON.
+![Settings for STMCube](assets/stmCubeSetup.png)
+- Go to the **Erasing & Programming** tab and set the **File path** to the firmware (this will be a .bin file) you are trying to program. The updated releases can be found [here](https://github.com/arduino-libraries/Arduino_Alvik/releases/). You can find the latest release [here](https://github.com/arduino-libraries/Arduino_Alvik/releases/tag/1.0.1). You can now press **Start Programming**.
+![Programming STM Cube](assets/ProgrammingstmCube.png)
+
 
 <br>
 
-
-In particular these settings are needed:
-- UART communication with DTR setted to 1 in STM32CubeProgrammer
-- robot must be turned on.
-
-<br>
-<br>
-<br>
 
 ## Useful links
 - [arduino-alvik-mpy](https://github.com/arduino/arduino-alvik-mpy): MicroPython library required to program Alvik
