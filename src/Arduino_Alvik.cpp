@@ -989,9 +989,9 @@ void Arduino_Alvik::set_illuminator(const bool value){
 }
 
 void Arduino_Alvik::set_servo_positions(const uint8_t a_position, const uint8_t b_position){
+  while (!xSemaphoreTakeRecursive(buffer_semaphore, TICK_TIME_SEMAPHORE));
   servo_positions[0] = a_position;
   servo_positions[1] = b_position;
-  while (!xSemaphoreTakeRecursive(buffer_semaphore, TICK_TIME_SEMAPHORE));
   msg_size = packeter->packetC2B('S', a_position, b_position);
   uart->write(packeter->msg, msg_size);
   xSemaphoreGiveRecursive(buffer_semaphore);
