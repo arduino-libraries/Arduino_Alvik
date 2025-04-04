@@ -23,6 +23,8 @@
 
 class Arduino_Alvik{
   private:
+    SemaphoreHandle_t buffer_semaphore;
+
     SemaphoreHandle_t update_semaphore;
     TaskHandle_t update_task;
 
@@ -84,6 +86,7 @@ class Arduino_Alvik{
     SemaphoreHandle_t robot_pos_semaphore;
     float robot_pose[3];
 
+
     float battery;
     float battery_soc;
     uint16_t battery_val = 0;
@@ -117,6 +120,7 @@ class Arduino_Alvik{
       private:
         HardwareSerial * _serial;
         ucPack * _packeter;
+        SemaphoreHandle_t * _buffer_semaphore;
         uint8_t * _led_state;
         uint8_t _offset;
         uint8_t _msg_size;
@@ -124,7 +128,7 @@ class Arduino_Alvik{
         String label;
 
         ArduinoAlvikRgbLed(){};
-        ArduinoAlvikRgbLed(HardwareSerial * serial, ucPack * packeter, String label, uint8_t * led_state, uint8_t offset);
+        ArduinoAlvikRgbLed(HardwareSerial * serial, ucPack * packeter, SemaphoreHandle_t * buffer_semaphore, String label, uint8_t * led_state, uint8_t offset);
         void operator=(const ArduinoAlvikRgbLed& other);
         void set_color(const bool red, const bool green, const bool blue);
     };
@@ -134,6 +138,7 @@ class Arduino_Alvik{
       private:
         HardwareSerial * _serial;
         ucPack * _packeter;
+        SemaphoreHandle_t * _buffer_semaphore;
         uint8_t _msg_size;
         float _wheel_diameter;
         uint8_t _label;
@@ -143,7 +148,7 @@ class Arduino_Alvik{
         Arduino_Alvik * _alvik;
       public:
         ArduinoAlvikWheel():_alvik(nullptr){};
-        ArduinoAlvikWheel(HardwareSerial * serial, ucPack * packeter, uint8_t label, 
+        ArduinoAlvikWheel(HardwareSerial * serial, ucPack * packeter, SemaphoreHandle_t * buffer_semaphore, uint8_t label, 
                           float * joint_velocity, float * joint_position, float wheel_diameter,
                           Arduino_Alvik & alvik);
 
@@ -163,13 +168,15 @@ class Arduino_Alvik{
       private:
         HardwareSerial * _serial;
         ucPack * _packeter;
+        SemaphoreHandle_t * _buffer_semaphore;
         uint8_t _msg_size;
         uint8_t _label;
         uint8_t _servo_id;
         uint8_t * _positions;
       public:
         ArduinoAlvikServo(){};
-        ArduinoAlvikServo(HardwareSerial * serial, ucPack * packeter, char label, uint8_t servo_id, uint8_t * positions);
+        ArduinoAlvikServo(HardwareSerial * serial, ucPack * packeter, SemaphoreHandle_t * buffer_semaphore, char label,
+                          uint8_t servo_id, uint8_t * positions);
         void set_position(const uint8_t position);
         int get_position();
     };
@@ -235,7 +242,9 @@ class Arduino_Alvik{
     void get_gyros(float & x, float & y, float & z);
     void get_imu(float & ax, float & ay, float & az, float & gx, float & gy, float & gz);
     bool get_shake();
+    bool get_lifted();
     String get_tilt();
+
 
     void get_distance(float & left, float & center_left, float & center, float & center_right, float & right, const uint8_t unit = CM);
     float get_distance_top(const uint8_t unit = CM);

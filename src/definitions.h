@@ -19,17 +19,20 @@
 
 #define LIB_VER_UP 1
 #define LIB_VER_MID 1
-#define LIB_VER_LOW 0
+#define LIB_VER_LOW 1
 
 #define REQUIRED_FW_VER_UP  1
 #define REQUIRED_FW_VER_MID 1
-#define REQUIRED_FW_VER_LOW 0
+#define REQUIRED_FW_VER_LOW 1
 
 
 #define RUN_ON_CORE_0 0
 #define RUN_ON_CORE_1 1
+#define USER_CORE RUN_ON_CORE_1
 #define NO_VERBOSE 0
 #define VERBOSE 1
+
+#define TICK_TIME_SEMAPHORE ( TickType_t )10
 
 #define CHECK_STM32 A6
 #define BOOT_STM32 D2

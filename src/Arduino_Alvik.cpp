@@ -15,6 +15,7 @@
 #include "default_colors.h"
 
 Arduino_Alvik::Arduino_Alvik():i2c(Wire){
+  buffer_semaphore = xSemaphoreCreateRecursiveMutex();
   update_semaphore = xSemaphoreCreateMutex();
   uart = new HardwareSerial(UART); //&Serial0
   packeter = new ucPack(200);
@@ -30,14 +31,14 @@ Arduino_Alvik::Arduino_Alvik():i2c(Wire){
   robot_vel_semaphore = xSemaphoreCreateMutex();
   robot_pos_semaphore = xSemaphoreCreateMutex();
 
-  left_led = ArduinoAlvikRgbLed(uart, packeter, "left_led", &led_state, 2);
-  right_led = ArduinoAlvikRgbLed(uart, packeter,"right_led", &led_state, 5);
+  left_led = ArduinoAlvikRgbLed(uart, packeter, &buffer_semaphore, "left_led", &led_state, 2);
+  right_led = ArduinoAlvikRgbLed(uart, packeter, &buffer_semaphore, "right_led", &led_state, 5);
 
-  left_wheel = ArduinoAlvikWheel(uart, packeter, 'L', &joints_velocity[0], &joints_position[0], WHEEL_DIAMETER_MM, *this);
-  right_wheel = ArduinoAlvikWheel(uart, packeter, 'R', &joints_velocity[1], &joints_position[1], WHEEL_DIAMETER_MM, *this);
+  left_wheel = ArduinoAlvikWheel(uart, packeter, &buffer_semaphore, 'L', &joints_velocity[0], &joints_position[0], WHEEL_DIAMETER_MM, *this);
+  right_wheel = ArduinoAlvikWheel(uart, packeter, &buffer_semaphore, 'R', &joints_velocity[1], &joints_position[1], WHEEL_DIAMETER_MM, *this);
 
-  servo_A = ArduinoAlvikServo(uart, packeter, 'A', 0, servo_positions);
-  servo_B = ArduinoAlvikServo(uart, packeter, 'B', 1, servo_positions);
+  servo_A = ArduinoAlvikServo(uart, packeter, &buffer_semaphore, 'A', 0, servo_positions);
+  servo_B = ArduinoAlvikServo(uart, packeter, &buffer_semaphore, 'B', 1, servo_positions);
 }
 
 void Arduino_Alvik::reset_hw(){                                                   //it is private
@@ -404,8 +405,10 @@ void Arduino_Alvik::get_wheels_speed(float & left, float & right, const uint8_t 
 }
 
 void Arduino_Alvik::set_wheels_speed(const float left, const float right, const uint8_t unit){
+  while (!xSemaphoreTakeRecursive(buffer_semaphore, TICK_TIME_SEMAPHORE));
   msg_size = packeter->packetC2F('J', convert_rotational_speed(left, unit, RPM), convert_rotational_speed(right, unit, RPM));
   uart->write(packeter->msg, msg_size);
+  xSemaphoreGiveRecursive(buffer_semaphore);
 }
 
 void Arduino_Alvik::get_wheels_position(float & left, float & right, const uint8_t unit){
@@ -416,12 +419,14 @@ void Arduino_Alvik::get_wheels_position(float & left, float & right, const uint8
 }
 
 void Arduino_Alvik::set_wheels_position(const float left, const float right, const uint8_t unit, const bool blocking){
+  while (!xSemaphoreTakeRecursive(buffer_semaphore, TICK_TIME_SEMAPHORE));
   msg_size = packeter->packetC2F('A', convert_angle(left, unit, DEG), convert_angle(right, unit, DEG));
   uart->write(packeter->msg, msg_size);
   waiting_ack = 'P';
   if (blocking){
     wait_for_target(max(left, right) / MOTOR_CONTROL_DEG_S);
   }
+  xSemaphoreGiveRecursive(buffer_semaphore);
 }
 
 void Arduino_Alvik::get_drive_speed(float & linear, float & angular, const uint8_t linear_unit, const uint8_t angular_unit){
@@ -437,6 +442,7 @@ void Arduino_Alvik::get_drive_speed(float & linear, float & angular, const uint8
 }
 
 void Arduino_Alvik::drive(const float linear, const float angular, const uint8_t linear_unit, const uint8_t angular_unit){
+  while (!xSemaphoreTakeRecursive(buffer_semaphore, TICK_TIME_SEMAPHORE));
   if (angular_unit == PERCENTAGE){
     converted_angular = (angular/ROBOT_MAX_DEG_S)*100.0;
   }
@@ -445,6 +451,7 @@ void Arduino_Alvik::drive(const float linear, const float angular, const uint8_t
   }
   msg_size = packeter->packetC2F('V', convert_speed(linear, linear_unit, MM_S), converted_angular);
   uart->write(packeter->msg, msg_size);
+  xSemaphoreGiveRecursive(buffer_semaphore);
 }
 
 void Arduino_Alvik::get_pose(float & x, float & y, float & theta, const uint8_t distance_unit, const uint8_t angle_unit){
@@ -456,11 +463,14 @@ void Arduino_Alvik::get_pose(float & x, float & y, float & theta, const uint8_t 
 }
 
 void Arduino_Alvik::reset_pose(const float x, const float y, const float theta, const uint8_t distance_unit, const uint8_t angle_unit){
+  while (!xSemaphoreTakeRecursive(buffer_semaphore, TICK_TIME_SEMAPHORE));
   msg_size = packeter->packetC3F('Z', convert_distance(x, distance_unit, MM), convert_distance(y, distance_unit, MM), convert_distance(theta, angle_unit, DEG));
   uart->write(packeter->msg, msg_size); 
+  xSemaphoreGiveRecursive(buffer_semaphore);
 }
 
 bool Arduino_Alvik::is_target_reached(){
+  while (!xSemaphoreTakeRecursive(buffer_semaphore, TICK_TIME_SEMAPHORE));
   if (waiting_ack == NO_ACK){
     return true;
   }
@@ -470,26 +480,28 @@ bool Arduino_Alvik::is_target_reached(){
     waiting_ack = NO_ACK;
     last_ack = 0x00;
     delay(100);
+    xSemaphoreGiveRecursive(buffer_semaphore);
     return true;
   }
+  xSemaphoreGiveRecursive(buffer_semaphore);
   return false;
 }
 
-void Arduino_Alvik::wait_for_target(const int idle_time){                                             //it is private
+void Arduino_Alvik::wait_for_target(const int idle_time){                     //it is private
   unsigned long start_t = millis();
   
   while (true){
     if (((millis() - start_t) >= idle_time*1000) && is_target_reached()) {
       break;
-    } else
-    {
+    }
+    else{
       delay(100);
     }
-    
   }
 }
 
 void Arduino_Alvik::rotate(const float angle, const uint8_t unit, const bool blocking){
+  while (!xSemaphoreTakeRecursive(buffer_semaphore, TICK_TIME_SEMAPHORE));
   delay(200);
   msg_size = packeter->packetC1F('R', convert_angle(angle, unit, DEG));
   uart->write(packeter->msg, msg_size);
@@ -497,9 +509,11 @@ void Arduino_Alvik::rotate(const float angle, const uint8_t unit, const bool blo
   if (blocking){
     wait_for_target(round(angle/MOTOR_CONTROL_DEG_S));
   }
+  xSemaphoreGiveRecursive(buffer_semaphore);
 }
 
 void Arduino_Alvik::move(const float distance, const uint8_t unit, const bool blocking){
+  while (!xSemaphoreTakeRecursive(buffer_semaphore, TICK_TIME_SEMAPHORE));
   delay(200);
   msg_size = packeter->packetC1F('G', convert_distance(distance, unit, MM));
   uart->write(packeter->msg, msg_size);
@@ -507,6 +521,7 @@ void Arduino_Alvik::move(const float distance, const uint8_t unit, const bool bl
   if (blocking){
     wait_for_target(round(distance/MOTOR_CONTROL_MM_S));
   }
+  xSemaphoreGiveRecursive(buffer_semaphore);
 }
 
 void Arduino_Alvik::brake(){
@@ -841,6 +856,10 @@ bool Arduino_Alvik::get_shake(){
   return move_bits & 0b00000001;
 }
 
+bool Arduino_Alvik::get_lifted(){
+  return move_bits & 0b00000010;
+}
+
 String Arduino_Alvik::get_tilt(){
   if (move_bits & 0b00000100){
     return "X";
@@ -943,8 +962,10 @@ bool Arduino_Alvik::is_battery_charging(){
 //-----------------------------------------------------------------------------------------------//
 
 void Arduino_Alvik::set_leds(){                                                   //it is private
+  while (!xSemaphoreTakeRecursive(buffer_semaphore, TICK_TIME_SEMAPHORE));
   msg_size = packeter->packetC1B('L', led_state);
   uart->write(packeter->msg, msg_size);
+  xSemaphoreGiveRecursive(buffer_semaphore);
 }
 
 void Arduino_Alvik::set_builtin_led(const bool value){
@@ -968,10 +989,12 @@ void Arduino_Alvik::set_illuminator(const bool value){
 }
 
 void Arduino_Alvik::set_servo_positions(const uint8_t a_position, const uint8_t b_position){
+  while (!xSemaphoreTakeRecursive(buffer_semaphore, TICK_TIME_SEMAPHORE));
   servo_positions[0] = a_position;
   servo_positions[1] = b_position;
   msg_size = packeter->packetC2B('S', a_position, b_position);
   uart->write(packeter->msg, msg_size);
+  xSemaphoreGiveRecursive(buffer_semaphore);
 }
 
 void Arduino_Alvik::get_servo_positions(int & a_position, int & b_position){
@@ -980,8 +1003,10 @@ void Arduino_Alvik::get_servo_positions(int & a_position, int & b_position){
 }
 
 void Arduino_Alvik::set_behaviour(const uint8_t behaviour){
+  while (!xSemaphoreTakeRecursive(buffer_semaphore, TICK_TIME_SEMAPHORE));
   msg_size = packeter->packetC1B('B', behaviour);
   uart->write(packeter->msg, msg_size);
+  xSemaphoreGiveRecursive(buffer_semaphore);
 }
 
 void Arduino_Alvik::get_version(uint8_t & upper, uint8_t & middle, uint8_t & lower, String version){
@@ -1032,10 +1057,12 @@ bool Arduino_Alvik::check_firmware_compatibility(){
 //                                       RGB led class                                           //
 //-----------------------------------------------------------------------------------------------//
 
-Arduino_Alvik::ArduinoAlvikRgbLed::ArduinoAlvikRgbLed(HardwareSerial * serial, ucPack * packeter, String label, 
+Arduino_Alvik::ArduinoAlvikRgbLed::ArduinoAlvikRgbLed(HardwareSerial * serial, ucPack * packeter, SemaphoreHandle_t * buffer_semaphore,
+                                                      String label,
                                                       uint8_t * led_state, uint8_t offset){
   _serial = serial;
   _packeter = packeter;
+  _buffer_semaphore = buffer_semaphore;
   this->label = label;
   _led_state = led_state;
   _offset = offset;
@@ -1044,6 +1071,7 @@ Arduino_Alvik::ArduinoAlvikRgbLed::ArduinoAlvikRgbLed(HardwareSerial * serial, u
 void Arduino_Alvik::ArduinoAlvikRgbLed::operator=(const ArduinoAlvikRgbLed& other){ 
   _serial = other._serial;
   _packeter = other._packeter;
+  _buffer_semaphore = other._buffer_semaphore;
   label = other.label;
   _led_state = other._led_state;
   _offset = other._offset;
@@ -1072,9 +1100,10 @@ void Arduino_Alvik::ArduinoAlvikRgbLed::set_color(const bool red, const bool gre
   else{
     (*_led_state) = (*_led_state) & ~(1<<(_offset+2));
   }
-
+  while (!xSemaphoreTakeRecursive(*_buffer_semaphore, TICK_TIME_SEMAPHORE));
   _msg_size = _packeter->packetC1B('L', *_led_state);
   _serial->write(_packeter->msg, _msg_size);
+  xSemaphoreGiveRecursive(*_buffer_semaphore);
 }
 
 
@@ -1082,10 +1111,12 @@ void Arduino_Alvik::ArduinoAlvikRgbLed::set_color(const bool red, const bool gre
 //                                         wheel class                                           //
 //-----------------------------------------------------------------------------------------------//
 
-Arduino_Alvik::ArduinoAlvikWheel::ArduinoAlvikWheel(HardwareSerial * serial, ucPack * packeter, uint8_t label, 
+Arduino_Alvik::ArduinoAlvikWheel::ArduinoAlvikWheel(HardwareSerial * serial, ucPack * packeter, SemaphoreHandle_t * buffer_semaphore,
+                                                    uint8_t label, 
                                                     float * joint_velocity, float * joint_position, float wheel_diameter, Arduino_Alvik & alvik):_alvik(&alvik){
   _serial = serial;
   _packeter = packeter;
+  _buffer_semaphore = buffer_semaphore;
   _label = label;
   _wheel_diameter = wheel_diameter;
   _joint_velocity = joint_velocity;
@@ -1093,13 +1124,17 @@ Arduino_Alvik::ArduinoAlvikWheel::ArduinoAlvikWheel(HardwareSerial * serial, ucP
 }
 
 void Arduino_Alvik::ArduinoAlvikWheel::reset(const float initial_position, const uint8_t unit){
+  while (!xSemaphoreTakeRecursive(*_buffer_semaphore, TICK_TIME_SEMAPHORE));
   _msg_size = _packeter->packetC2B1F('W', _label, 'Z', convert_angle(initial_position, unit, DEG));
   _serial->write(_packeter->msg, _msg_size);
+  xSemaphoreGiveRecursive(*_buffer_semaphore);
 }
 
 void Arduino_Alvik::ArduinoAlvikWheel::set_pid_gains(const float kp, const float ki, const float kd){
+  while (!xSemaphoreTakeRecursive(*_buffer_semaphore, TICK_TIME_SEMAPHORE));
   _msg_size = _packeter->packetC1B3F('P', _label, kp, ki, kd);
   _serial->write(_packeter->msg, _msg_size);
+  xSemaphoreGiveRecursive(*_buffer_semaphore);
 }
 
 void Arduino_Alvik::ArduinoAlvikWheel::stop(){
@@ -1107,6 +1142,7 @@ void Arduino_Alvik::ArduinoAlvikWheel::stop(){
 }
 
 void Arduino_Alvik::ArduinoAlvikWheel::set_speed(const float velocity, const uint8_t unit){
+  while (!xSemaphoreTakeRecursive(*_buffer_semaphore, TICK_TIME_SEMAPHORE));
   if (unit==PERCENTAGE){
     converted_vel = (velocity/100.0)*MOTOR_MAX_RPM;
   }
@@ -1115,6 +1151,7 @@ void Arduino_Alvik::ArduinoAlvikWheel::set_speed(const float velocity, const uin
   }
   _msg_size = _packeter->packetC2B1F('W', _label, 'V', converted_vel);
   _serial->write(_packeter->msg, _msg_size);
+  xSemaphoreGiveRecursive(*_buffer_semaphore);
 }
 
 float Arduino_Alvik::ArduinoAlvikWheel::get_speed(const uint8_t unit){
@@ -1125,12 +1162,14 @@ float Arduino_Alvik::ArduinoAlvikWheel::get_speed(const uint8_t unit){
 }
 
 void Arduino_Alvik::ArduinoAlvikWheel::set_position(const float position, const uint8_t unit, const bool blocking){
+  while (!xSemaphoreTakeRecursive(*_buffer_semaphore, TICK_TIME_SEMAPHORE));
   _msg_size = _packeter->packetC2B1F('W', _label, 'P', convert_angle(position, unit, DEG));
   _serial->write(_packeter->msg, _msg_size);
   _alvik->waiting_ack = 'P';
   if (blocking){
     _alvik->wait_for_target(position / MOTOR_CONTROL_DEG_S);
   }
+  xSemaphoreGiveRecursive(*_buffer_semaphore);
 }
 
 float Arduino_Alvik::ArduinoAlvikWheel::get_position(const uint8_t unit){
@@ -1141,19 +1180,23 @@ float Arduino_Alvik::ArduinoAlvikWheel::get_position(const uint8_t unit){
 //                                         servo class                                           //
 //-----------------------------------------------------------------------------------------------//
 
-Arduino_Alvik::ArduinoAlvikServo::ArduinoAlvikServo(HardwareSerial * serial, ucPack * packeter, char label,
+Arduino_Alvik::ArduinoAlvikServo::ArduinoAlvikServo(HardwareSerial * serial, ucPack * packeter, SemaphoreHandle_t * buffer_semaphore, 
+                                                                    char label,
                                                                     uint8_t servo_id, uint8_t * positions){
   _serial = serial;
   _packeter = packeter;
+  _buffer_semaphore = buffer_semaphore;
   _label = label;
   _servo_id = servo_id;
   _positions = positions;
 }
 
 void Arduino_Alvik::ArduinoAlvikServo::set_position(const uint8_t position){
+  while (!xSemaphoreTakeRecursive(*_buffer_semaphore, TICK_TIME_SEMAPHORE));
   _positions[_servo_id] = position;
   _msg_size = _packeter->packetC2B('S', _positions[0], _positions[1]);
   _serial->write(_packeter->msg, _msg_size);
+  xSemaphoreGiveRecursive(*_buffer_semaphore);
 }
 
 int Arduino_Alvik::ArduinoAlvikServo::get_position(){
