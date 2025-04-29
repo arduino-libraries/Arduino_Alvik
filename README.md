@@ -19,7 +19,7 @@ The white and black values will be written into ESP32 EEPROM.
 
 ## How to update firmware of Arduino Alvik Carrier
 
-Since this [issue](https://github.com/stm32duino/Arduino_Core_STM32/issues/2292), Arduino® Alvik Carrier is not integrated yet into STM32duino's boards.
+Currently, Arduino® Alvik Carrier is not integrated yet into STM32duino's boards.
 
 <br>
 At the moment, it is possible to:
