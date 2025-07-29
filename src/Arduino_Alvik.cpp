@@ -464,7 +464,7 @@ void Arduino_Alvik::get_pose(float & x, float & y, float & theta, const uint8_t 
 
 void Arduino_Alvik::reset_pose(const float x, const float y, const float theta, const uint8_t distance_unit, const uint8_t angle_unit){
   while (!xSemaphoreTakeRecursive(buffer_semaphore, TICK_TIME_SEMAPHORE));
-  msg_size = packeter->packetC3F('Z', convert_distance(x, distance_unit, MM), convert_distance(y, distance_unit, MM), convert_distance(theta, angle_unit, DEG));
+  msg_size = packeter->packetC3F('Z', convert_distance(x, distance_unit, MM), convert_distance(y, distance_unit, MM), convert_angle(theta, angle_unit, DEG));
   uart->write(packeter->msg, msg_size); 
   xSemaphoreGiveRecursive(buffer_semaphore);
 }
