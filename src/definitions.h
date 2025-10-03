@@ -15,7 +15,10 @@
 
 #include "Arduino.h"
 
-
+#define HW0 0
+#define HW_REVISION_1_4 HW0
+#define HW1 1
+#define HW_REVISION_1_6 HW1
 
 #define LIB_VER_UP 1
 #define LIB_VER_MID 1
