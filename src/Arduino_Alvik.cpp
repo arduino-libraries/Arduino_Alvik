@@ -371,6 +371,8 @@ int Arduino_Alvik::parse_message(){                                             
     case 0x7E:
       while (!xSemaphoreTake(version_semaphore, 5)){}
       packeter->unpacketC3B(code, fw_version[0], fw_version[1], fw_version[2]);
+      hw_version = fw_version[0] >> 4;
+      fw_version[0] = fw_version[1] & 0x0F;
       xSemaphoreGive(version_semaphore);
       break;
 
@@ -1010,19 +1012,34 @@ void Arduino_Alvik::set_behaviour(const uint8_t behaviour){
 }
 
 void Arduino_Alvik::get_version(uint8_t & upper, uint8_t & middle, uint8_t & lower, String version){
+
   if ((version=="fw")||(version=="FW")||(version=="firmware")){
     get_fw_version(upper,middle,lower);
+    return;
   }
-  else{
-    if ((version=="lib")||(version=="LIB")){
-      get_lib_version(upper,middle,lower);
-    }
-    else{
-      upper = 0;
-      middle = 0;
-      lower = 0;
-    }
+
+  if ((version=="hw")||(version=="HW")||(version=="hardware")){
+    get_hw_version(upper);
+    middle = 0;
+    lower = 0;
+    return;
   }
+
+  if ((version=="lib")||(version=="LIB")){
+    get_lib_version(upper,middle,lower);
+    return;
+  }
+
+  upper = 0;
+  middle = 0;
+  lower = 0;
+
+}
+
+void Arduino_Alvik::get_hw_version(uint8_t & v){
+  while (!xSemaphoreTake(version_semaphore, 5)){}
+  v = hw_version;
+  xSemaphoreGive(version_semaphore);
 }
 
 void Arduino_Alvik::get_fw_version(uint8_t & upper, uint8_t & middle, uint8_t & lower){

@@ -27,3 +27,7 @@ Temporary Items
 
 # CLion IDE files
 .idea/
+CMakeLists.txt
+
+# VSCode
+.vscode/

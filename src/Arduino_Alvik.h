@@ -45,6 +45,7 @@ class Arduino_Alvik{
 
     SemaphoreHandle_t version_semaphore;
     uint8_t fw_version[3];
+    uint8_t hw_version;
     uint8_t lib_version[3];
 
     uint8_t led_state;
@@ -271,6 +272,7 @@ class Arduino_Alvik{
     
     void get_version(uint8_t & upper, uint8_t & middle, uint8_t & lower, const String version="fw");
     void get_fw_version(uint8_t & upper, uint8_t & middle, uint8_t & lower);
+    void get_hw_version(uint8_t & v);
     void get_lib_version(uint8_t & upper, uint8_t & middle, uint8_t & lower);
     void get_required_fw_version(uint8_t & upper, uint8_t & middle, uint8_t & lower);
     bool check_firmware_compatibility();
